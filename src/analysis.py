@@ -21,12 +21,17 @@ import json
 import os
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
+# Every setting comes from config.yaml in the repository root
+CFG = yaml.safe_load(open("config.yaml"))
+BASE = CFG["models"]["baseline"]
+
 DATA = "data"
-OUT = "results"
+OUT = CFG["paths"]["results"]
 os.makedirs(OUT, exist_ok=True)
 summary = {}
 
@@ -36,30 +41,14 @@ summary = {}
 # border is connected. Cabo Verde is an island and has no connections.
 # =============================================================================
 
-df = pd.read_csv(f"{DATA}/processed/ecowas_country_year.csv")
+df = pd.read_csv(CFG["paths"]["features_csv"])
 
-BORDERS = {
-    "BEN": ["NGA", "NER", "BFA", "TGO"],
-    "BFA": ["MLI", "NER", "BEN", "TGO", "GHA", "CIV"],
-    "CPV": [],
-    "CIV": ["LBR", "GIN", "MLI", "BFA", "GHA"],
-    "GMB": ["SEN"],
-    "GHA": ["CIV", "BFA", "TGO"],
-    "GIN": ["GNB", "SEN", "MLI", "CIV", "LBR", "SLE"],
-    "GNB": ["SEN", "GIN"],
-    "LBR": ["SLE", "GIN", "CIV"],
-    "MLI": ["SEN", "GIN", "CIV", "BFA", "NER"],
-    "NER": ["MLI", "BFA", "BEN", "NGA"],
-    "NGA": ["BEN", "NER"],
-    "SEN": ["GMB", "GNB", "GIN", "MLI"],
-    "SLE": ["GIN", "LBR"],
-    "TGO": ["GHA", "BFA", "BEN"],
-}
+BORDERS = CFG["borders"]   # the border network, from config.yaml
 pd.DataFrame([(a, b) for a, nbrs in BORDERS.items() for b in nbrs],
              columns=["country", "neighbor"]).to_csv(f"{OUT}/borders.csv", index=False)
 
 # Mali, Burkina Faso and Niger left ECOWAS on January 29, 2025
-EXITED_2025 = ["MLI", "BFA", "NER"]
+EXITED_2025 = CFG["exited_2025"]
 
 
 def add_network_features(panel):
@@ -87,7 +76,7 @@ def add_network_features(panel):
 
 # Extend the panel with 2009 and 2025 V-Dem values so neighbor features and the
 # 2025-2026 scores have the years they need.
-vdem = pd.read_csv(f"{DATA}/raw/vdem_ecowas_subset.csv")
+vdem = pd.read_csv(CFG["sources"]["vdem"]["file"])
 name_to_iso = {"Ivory Coast": "CIV", "Cape Verde": "CPV", "The Gambia": "GMB"}
 vdem["iso3"] = vdem["country_text_id"]
 vdem = vdem.rename(columns={"e_pt_coup": "coups_successful",
@@ -180,7 +169,7 @@ def loyo_scores(data, features):
     for yr in sorted(data.year.unique()):
         train, test = data[data.year != yr], data[data.year == yr]
         scaler = StandardScaler().fit(train[features])
-        model = LogisticRegression(C=1.0, class_weight="balanced", max_iter=1000)
+        model = LogisticRegression(C=BASE["C"], class_weight=BASE["class_weight"], max_iter=BASE["max_iter"])
         model.fit(scaler.transform(train[features]), train.ecowas_action)
         preds.loc[test.index] = model.predict_proba(scaler.transform(test[features]))[:, 1]
     return preds
@@ -216,7 +205,7 @@ model_df[model_df.ecowas_action == 1][["iso3", "year", "action_severity",
 
 # Coefficients from the full-sample network model (standardized, so comparable)
 scaler = StandardScaler().fit(model_df[NETWORK])
-full = LogisticRegression(C=1.0, class_weight="balanced", max_iter=1000)
+full = LogisticRegression(C=BASE["C"], class_weight=BASE["class_weight"], max_iter=BASE["max_iter"])
 full.fit(scaler.transform(model_df[NETWORK]), model_df.ecowas_action)
 coefs = pd.DataFrame({"feature": NETWORK, "coef": full.coef_[0]})
 coefs["odds_multiplier_per_sd"] = np.exp(coefs.coef)
@@ -225,7 +214,7 @@ coefs.round(3).to_csv(f"{OUT}/coefficients.csv", index=False)
 
 def fit_full(data, feats):
     sc = StandardScaler().fit(data[feats])
-    m = LogisticRegression(C=1.0, class_weight="balanced", max_iter=1000)
+    m = LogisticRegression(C=BASE["C"], class_weight=BASE["class_weight"], max_iter=BASE["max_iter"])
     m.fit(sc.transform(data[feats]), data.ecowas_action)
     return sc, m
 

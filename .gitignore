@@ -2,4 +2,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
+.pytest_cache/
 data/external/
+data/warehouse/
+data/raw/world_bank_live.csv
