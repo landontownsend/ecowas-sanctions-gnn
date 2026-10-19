@@ -1,0 +1,114 @@
+# =============================================================================
+# config.yaml
+# The single place for every setting in the project: years, countries, the
+# border network, data sources, file paths, and model settings.
+# The pipeline (pipeline/) and the model scripts (src/) all read this file.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Study period
+# The dataset covers 2010 to 2024. The pipeline also loads 2009 so that 2010
+# has prior-year (lagged) values.
+# -----------------------------------------------------------------------------
+years:
+  start: 2010
+  end: 2024
+
+# -----------------------------------------------------------------------------
+# The 15 ECOWAS members
+# vdem_name is how V-Dem spells the country.
+# landlocked: 1 for Mali, Burkina Faso, and Niger.
+# -----------------------------------------------------------------------------
+countries:
+  - {iso3: BEN, name: Benin,          vdem_name: Benin,         landlocked: 0}
+  - {iso3: BFA, name: Burkina Faso,   vdem_name: Burkina Faso,  landlocked: 1}
+  - {iso3: CPV, name: Cabo Verde,     vdem_name: Cape Verde,    landlocked: 0}
+  - {iso3: CIV, name: Cote d'Ivoire,  vdem_name: Ivory Coast,   landlocked: 0}
+  - {iso3: GMB, name: Gambia,         vdem_name: The Gambia,    landlocked: 0}
+  - {iso3: GHA, name: Ghana,          vdem_name: Ghana,         landlocked: 0}
+  - {iso3: GIN, name: Guinea,         vdem_name: Guinea,        landlocked: 0}
+  - {iso3: GNB, name: Guinea-Bissau,  vdem_name: Guinea-Bissau, landlocked: 0}
+  - {iso3: LBR, name: Liberia,        vdem_name: Liberia,       landlocked: 0}
+  - {iso3: MLI, name: Mali,           vdem_name: Mali,          landlocked: 1}
+  - {iso3: NER, name: Niger,          vdem_name: Niger,         landlocked: 1}
+  - {iso3: NGA, name: Nigeria,        vdem_name: Nigeria,       landlocked: 0}
+  - {iso3: SEN, name: Senegal,        vdem_name: Senegal,       landlocked: 0}
+  - {iso3: SLE, name: Sierra Leone,   vdem_name: Sierra Leone,  landlocked: 0}
+  - {iso3: TGO, name: Togo,           vdem_name: Togo,          landlocked: 0}
+
+# Members that left ECOWAS on January 29, 2025
+exited_2025: [MLI, BFA, NER]
+
+# -----------------------------------------------------------------------------
+# Border network: each member and the members it shares a land border with.
+# Cabo Verde is an island and has no connections.
+# -----------------------------------------------------------------------------
+borders:
+  BEN: [NGA, NER, BFA, TGO]
+  BFA: [MLI, NER, BEN, TGO, GHA, CIV]
+  CPV: []
+  CIV: [LBR, GIN, MLI, BFA, GHA]
+  GMB: [SEN]
+  GHA: [CIV, BFA, TGO]
+  GIN: [GNB, SEN, MLI, CIV, LBR, SLE]
+  GNB: [SEN, GIN]
+  LBR: [SLE, GIN, CIV]
+  MLI: [SEN, GIN, CIV, BFA, NER]
+  NER: [MLI, BFA, BEN, NGA]
+  NGA: [BEN, NER]
+  SEN: [GMB, GNB, GIN, MLI]
+  SLE: [GIN, LBR]
+  TGO: [GHA, BFA, BEN]
+
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+sources:
+  world_bank:
+    # Live mode calls this API. Local mode reads the saved snapshot instead.
+    api_url: https://api.worldbank.org/v2
+    first_year: 2009
+    last_year: 2025
+    snapshot: data/raw/world_bank.csv
+    indicators:
+      NY.GDP.MKTP.KD.ZG: gdp_growth        # real GDP growth, annual %
+      FP.CPI.TOTL.ZG: inflation            # consumer price inflation, annual %
+      NE.IMP.GNFS.ZS: imports_pct_gdp      # imports as a share of GDP
+      NE.IMP.GNFS.KD: imports_real         # imports in constant US dollars
+  vdem:
+    # V-Dem has no live API; it publishes one dataset release each year.
+    version: v16
+    file: data/raw/vdem_ecowas_subset.csv
+  ecowas_events:
+    # Hand-coded from ECOWAS communiques and news coverage
+    file: data/raw/ecowas_events.csv
+
+# -----------------------------------------------------------------------------
+# File paths
+# -----------------------------------------------------------------------------
+paths:
+  warehouse: data/warehouse/ecowas.duckdb
+  features_csv: data/processed/ecowas_country_year.csv
+  results: results
+  figures: figures
+
+# -----------------------------------------------------------------------------
+# Model settings
+# -----------------------------------------------------------------------------
+models:
+  baseline:
+    C: 1.0                    # inverse strength of the L2 (ridge) penalty
+    class_weight: balanced    # rare action years count as much as quiet years
+    max_iter: 1000
+  gnn:
+    seeds: 25                 # ensemble size; predictions are averaged
+    epochs: 300
+    hidden: 16
+    layers: 2
+    dropout: 0.2
+    lr: 0.01
+    weight_decay: 0.005       # L2 penalty on the network weights
+    threads: 4
+  bootstrap:
+    reps: 2000                # year-clustered bootstrap resamples
+    seed: 735
