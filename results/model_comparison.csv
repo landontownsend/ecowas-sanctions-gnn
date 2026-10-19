@@ -1,0 +1,4 @@
+model,auc,top3_hits,actions
+Own conditions only,0.761,5,10
+Own + region-wide coups,0.705,5,10
+Own + border neighbors (network),0.78,6,10

@@ -1,0 +1,5 @@
+feature,coef,odds_multiplier_per_sd
+military_rule_index_lag1,0.853,2.347
+coups_successful_lag1,-0.112,0.894
+border_military_max_lag1,0.823,2.278
+border_coups_prev3,-0.039,0.962

@@ -1,0 +1,211 @@
+{
+  "settings": {
+    "seeds": 25,
+    "epochs": 300,
+    "hidden": 16,
+    "layers": 2,
+    "dropout": 0.2,
+    "lr": 0.01,
+    "weight_decay": 0.005
+  },
+  "loyo": {
+    "baseline_c": {
+      "auc": 0.78,
+      "top3_hits": 6
+    },
+    "gnn": {
+      "auc": 0.743,
+      "top3_hits": 5
+    },
+    "gnn_no_edges": {
+      "auc": 0.663,
+      "top3_hits": 4
+    }
+  },
+  "bootstrap": {
+    "reps": 1999,
+    "gnn_auc_95ci": [
+      0.526,
+      0.895
+    ],
+    "baseline_c_auc_95ci": [
+      0.564,
+      0.938
+    ],
+    "difference_95ci": [
+      -0.227,
+      0.117
+    ],
+    "share_gnn_better": 0.309
+  },
+  "action_ranks": [
+    {
+      "iso3": "CIV",
+      "year": 2010,
+      "rank_baseline_c": 2,
+      "rank_gnn": 3,
+      "p_baseline_c": 0.39,
+      "p_gnn": 0.136
+    },
+    {
+      "iso3": "GNB",
+      "year": 2012,
+      "rank_baseline_c": 8,
+      "rank_gnn": 6,
+      "p_baseline_c": 0.167,
+      "p_gnn": 0.0
+    },
+    {
+      "iso3": "MLI",
+      "year": 2012,
+      "rank_baseline_c": 3,
+      "rank_gnn": 2,
+      "p_baseline_c": 0.32,
+      "p_gnn": 0.138
+    },
+    {
+      "iso3": "MLI",
+      "year": 2020,
+      "rank_baseline_c": 3,
+      "rank_gnn": 1,
+      "p_baseline_c": 0.423,
+      "p_gnn": 0.744
+    },
+    {
+      "iso3": "GIN",
+      "year": 2021,
+      "rank_baseline_c": 1,
+      "rank_gnn": 3,
+      "p_baseline_c": 0.826,
+      "p_gnn": 0.238
+    },
+    {
+      "iso3": "MLI",
+      "year": 2021,
+      "rank_baseline_c": 6,
+      "rank_gnn": 1,
+      "p_baseline_c": 0.675,
+      "p_gnn": 0.7
+    },
+    {
+      "iso3": "BFA",
+      "year": 2022,
+      "rank_baseline_c": 7,
+      "rank_gnn": 9,
+      "p_baseline_c": 0.696,
+      "p_gnn": 0.028
+    },
+    {
+      "iso3": "GIN",
+      "year": 2022,
+      "rank_baseline_c": 2,
+      "rank_gnn": 4,
+      "p_baseline_c": 0.964,
+      "p_gnn": 0.629
+    },
+    {
+      "iso3": "MLI",
+      "year": 2022,
+      "rank_baseline_c": 1,
+      "rank_gnn": 6,
+      "p_baseline_c": 0.973,
+      "p_gnn": 0.267
+    },
+    {
+      "iso3": "NER",
+      "year": 2023,
+      "rank_baseline_c": 9,
+      "rank_gnn": 13,
+      "p_baseline_c": 0.479,
+      "p_gnn": 0.0
+    }
+  ],
+  "oos_2025": {
+    "gnb_rank": 6,
+    "ben_rank": 10,
+    "top5": [
+      {
+        "iso3": "MLI",
+        "gnn_2025": 0.301
+      },
+      {
+        "iso3": "GIN",
+        "gnn_2025": 0.3
+      },
+      {
+        "iso3": "SLE",
+        "gnn_2025": 0.008
+      },
+      {
+        "iso3": "SEN",
+        "gnn_2025": 0.005
+      },
+      {
+        "iso3": "LBR",
+        "gnn_2025": 0.004
+      }
+    ]
+  },
+  "current_members_2026": [
+    {
+      "iso3": "GNB",
+      "score_2026": 70,
+      "member_rank_2026": 1.0
+    },
+    {
+      "iso3": "GIN",
+      "score_2026": 64,
+      "member_rank_2026": 2.0
+    },
+    {
+      "iso3": "LBR",
+      "score_2026": 1,
+      "member_rank_2026": 3.0
+    },
+    {
+      "iso3": "TGO",
+      "score_2026": 0,
+      "member_rank_2026": 4.0
+    },
+    {
+      "iso3": "BEN",
+      "score_2026": 0,
+      "member_rank_2026": 5.0
+    },
+    {
+      "iso3": "SLE",
+      "score_2026": 0,
+      "member_rank_2026": 6.0
+    },
+    {
+      "iso3": "GHA",
+      "score_2026": 0,
+      "member_rank_2026": 7.0
+    },
+    {
+      "iso3": "SEN",
+      "score_2026": 0,
+      "member_rank_2026": 8.0
+    },
+    {
+      "iso3": "CIV",
+      "score_2026": 0,
+      "member_rank_2026": 9.0
+    },
+    {
+      "iso3": "NGA",
+      "score_2026": 0,
+      "member_rank_2026": 10.0
+    },
+    {
+      "iso3": "CPV",
+      "score_2026": 0,
+      "member_rank_2026": 11.0
+    },
+    {
+      "iso3": "GMB",
+      "score_2026": 0,
+      "member_rank_2026": 12.0
+    }
+  ]
+}

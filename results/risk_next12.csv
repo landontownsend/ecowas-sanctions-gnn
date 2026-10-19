@@ -1,0 +1,16 @@
+iso3,military_rule_index_lag1,coups_successful_lag1,neighbor_coups_prev3,border_military_max_lag1,border_coups_prev3,risk,rank,status,member_rank,tier,context,risk_score_0_100
+NER,1.0,0.0,1.0,1.0,0.0,0.9890852973662608,1,Left ECOWAS (2025),,Left ECOWAS,,99
+GIN,1.0,0.0,2.0,1.0,1.0,0.9886185756899961,2,Member,1.0,High,Readmitted Jan 2026 after Doumbouya's election; model does not yet see this,99
+MLI,1.0,0.0,2.0,1.0,1.0,0.9886185756899961,3,Left ECOWAS (2025),,Left ECOWAS,,99
+GNB,1.0,1.0,1.0,1.0,0.0,0.9822007707237564,4,Suspended (Nov 2025),2.0,High,"Military council since Nov 2025; suspended; elections promised by Dec 6, 2026",98
+BFA,0.9,0.0,2.0,1.0,1.0,0.9819865290797931,5,Left ECOWAS (2025),,Left ECOWAS,,98
+BEN,0.5,0.0,2.0,1.0,1.0,0.8942572849251351,6,Member,3.0,High,"Failed coup attempt Dec 7, 2025; borders Niger and Burkina Faso",89
+CIV,0.333,0.0,2.0,1.0,0.0,0.802077291376062,7,Member,4.0,Elevated,,80
+LBR,0.333,0.0,2.0,1.0,0.0,0.802077291376062,8,Member,5.0,Elevated,,80
+NGA,0.312,0.0,2.0,1.0,1.0,0.7788801336254741,9,Member,6.0,Elevated,,78
+SLE,0.25,0.0,2.0,1.0,0.0,0.7335399447319452,10,Member,7.0,Elevated,,73
+TGO,0.3,0.0,2.0,0.9,0.0,0.7186236299229,11,Member,8.0,Elevated,,72
+SEN,0.1,0.0,2.0,1.0,1.0,0.5674639300465271,12,Member,9.0,Lower,,57
+GHA,0.1,0.0,2.0,0.9,0.0,0.5014770015954981,13,Member,10.0,Lower,,50
+GMB,0.143,0.0,2.0,0.1,0.0,0.09471763511066668,14,Member,11.0,Lower,,9
+CPV,0.0,0.0,2.0,0.0,0.0,0.03799790501856157,15,Member,12.0,Lower,,4

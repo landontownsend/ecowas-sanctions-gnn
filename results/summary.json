@@ -1,0 +1,193 @@
+{
+  "n_rows": 225,
+  "n_action_years": 10,
+  "actions_2020_2023": 7,
+  "successful_coup_years": 9,
+  "successful_coup_years_with_action": 7,
+  "failed_only_years": 5,
+  "failed_only_years_with_action": 0,
+  "actions_without_coup": 3,
+  "impact_median_excess_all_actions": -11.3,
+  "impact_median_excess_closures": -8.6,
+  "impact_niger_2023": -28.9,
+  "impact_actions_below_region": 9,
+  "impact_corr_exposure": -0.11,
+  "gdp_growth_action_years": 2.35,
+  "gdp_growth_other_years": 4.69,
+  "model_comparison": [
+    {
+      "model": "Own conditions only",
+      "auc": 0.761,
+      "top3_hits": 5,
+      "actions": 10
+    },
+    {
+      "model": "Own + region-wide coups",
+      "auc": 0.705,
+      "top3_hits": 5,
+      "actions": 10
+    },
+    {
+      "model": "Own + border neighbors (network)",
+      "auc": 0.78,
+      "top3_hits": 6,
+      "actions": 10
+    }
+  ],
+  "oos_2025_top5": [
+    {
+      "iso3": "MLI",
+      "risk": 0.985,
+      "rank": 1
+    },
+    {
+      "iso3": "BFA",
+      "risk": 0.984,
+      "rank": 2
+    },
+    {
+      "iso3": "GIN",
+      "risk": 0.983,
+      "rank": 3
+    },
+    {
+      "iso3": "NER",
+      "risk": 0.975,
+      "rank": 4
+    },
+    {
+      "iso3": "CIV",
+      "risk": 0.749,
+      "rank": 5
+    }
+  ],
+  "oos_2025_gnb_rank": 12,
+  "oos_2025_ben_rank": 7,
+  "risk_next12": [
+    {
+      "iso3": "NER",
+      "risk": "0.989",
+      "member_rank": NaN,
+      "status": "Left ECOWAS (2025)",
+      "tier": "High"
+    },
+    {
+      "iso3": "GIN",
+      "risk": "0.989",
+      "member_rank": "1.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "MLI",
+      "risk": "0.989",
+      "member_rank": NaN,
+      "status": "Left ECOWAS (2025)",
+      "tier": "High"
+    },
+    {
+      "iso3": "GNB",
+      "risk": "0.982",
+      "member_rank": "2.0",
+      "status": "Suspended (Nov 2025)",
+      "tier": "High"
+    },
+    {
+      "iso3": "BFA",
+      "risk": "0.982",
+      "member_rank": NaN,
+      "status": "Left ECOWAS (2025)",
+      "tier": "High"
+    },
+    {
+      "iso3": "BEN",
+      "risk": "0.894",
+      "member_rank": "3.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "CIV",
+      "risk": "0.802",
+      "member_rank": "4.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "LBR",
+      "risk": "0.802",
+      "member_rank": "5.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "NGA",
+      "risk": "0.779",
+      "member_rank": "6.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "SLE",
+      "risk": "0.734",
+      "member_rank": "7.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "TGO",
+      "risk": "0.719",
+      "member_rank": "8.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "SEN",
+      "risk": "0.567",
+      "member_rank": "9.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "GHA",
+      "risk": "0.501",
+      "member_rank": "10.0",
+      "status": "Member",
+      "tier": "High"
+    },
+    {
+      "iso3": "GMB",
+      "risk": "0.095",
+      "member_rank": "11.0",
+      "status": "Member",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "CPV",
+      "risk": "0.038",
+      "member_rank": "12.0",
+      "status": "Member",
+      "tier": "Lower"
+    }
+  ],
+  "held_out_2024_junta_scores": [
+    {
+      "iso3": "BFA",
+      "pred_network": 0.999
+    },
+    {
+      "iso3": "GIN",
+      "pred_network": 0.998
+    },
+    {
+      "iso3": "MLI",
+      "pred_network": 0.999
+    },
+    {
+      "iso3": "NER",
+      "pred_network": 0.993
+    }
+  ],
+  "impact_median_excess_landlocked": -4.5,
+  "impact_median_excess_coastal": -18.3
+}
