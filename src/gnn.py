@@ -13,7 +13,7 @@ Design (fixed before looking at any held-out result)
     coups, and the country's own successful coups over the previous three years.
     Unlike Baseline C, the network receives NO hand-built neighbor summaries;
     it must learn how to combine neighbors' features itself.
-  * Model: 2-layer GraphSAGE (hidden size 16, ReLU, dropout 0.2) and a linear
+  * Model (settings in config.yaml): 2-layer GraphSAGE (hidden 16, ReLU, dropout 0.2), linear
     output. Two layers let information travel two border steps.
   * Training: weighted binary cross-entropy (positives weighted by the
     negative-to-positive ratio), Adam (lr 0.01, weight decay 0.005), 300 epochs.
@@ -29,6 +29,7 @@ import json
 import os
 import numpy as np
 import pandas as pd
+import yaml
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
@@ -37,35 +38,34 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
-torch.set_num_threads(4)
+# Every setting comes from config.yaml in the repository root
+CFG = yaml.safe_load(open("config.yaml"))
+BASE = CFG["models"]["baseline"]
+G = CFG["models"]["gnn"]
+B = CFG["models"]["bootstrap"]
+torch.set_num_threads(G["threads"])
+
 DATA = "data"
-OUT = "results"
+OUT = CFG["paths"]["results"]
 os.makedirs(OUT, exist_ok=True)
 
-SEEDS = 25
-EPOCHS = 300
-HIDDEN = 16
-BOOT = 2000
+SEEDS = G["seeds"]
+EPOCHS = G["epochs"]
+HIDDEN = G["hidden"]
+BOOT = B["reps"]
 
 # =============================================================================
 # SECTION 1: DATA, BORDERS, AND FEATURES
 # =============================================================================
 
-BORDERS = {
-    "BEN": ["NGA", "NER", "BFA", "TGO"], "BFA": ["MLI", "NER", "BEN", "TGO", "GHA", "CIV"],
-    "CPV": [], "CIV": ["LBR", "GIN", "MLI", "BFA", "GHA"], "GMB": ["SEN"],
-    "GHA": ["CIV", "BFA", "TGO"], "GIN": ["GNB", "SEN", "MLI", "CIV", "LBR", "SLE"],
-    "GNB": ["SEN", "GIN"], "LBR": ["SLE", "GIN", "CIV"], "MLI": ["SEN", "GIN", "CIV", "BFA", "NER"],
-    "NER": ["MLI", "BFA", "BEN", "NGA"], "NGA": ["BEN", "NER"], "SEN": ["GMB", "GNB", "GIN", "MLI"],
-    "SLE": ["GIN", "LBR"], "TGO": ["GHA", "BFA", "BEN"],
-}
+BORDERS = CFG["borders"]   # the border network, from config.yaml
 NODES = sorted(BORDERS)
 IDX = {c: i for i, c in enumerate(NODES)}
 EDGES = torch.tensor([[IDX[a], IDX[b]] for a in NODES for b in BORDERS[a]], dtype=torch.long).t()
 NO_EDGES = torch.empty((2, 0), dtype=torch.long)
 
-df = pd.read_csv(f"{DATA}/processed/ecowas_country_year.csv")
-vdem = pd.read_csv(f"{DATA}/raw/vdem_ecowas_subset.csv")
+df = pd.read_csv(CFG["paths"]["features_csv"])
+vdem = pd.read_csv(CFG["sources"]["vdem"]["file"])
 vdem = vdem.rename(columns={"country_text_id": "iso3", "e_pt_coup": "coups",
                             "v2x_ex_military": "military"})
 vdem["coups"] = vdem["coups"].fillna(0)   # blank 2025 coup counts mean no coup
@@ -105,7 +105,7 @@ class GNN(torch.nn.Module):
 
     def forward(self, x, edge_index):
         h = F.relu(self.conv1(x, edge_index))
-        h = F.dropout(h, p=0.2, training=self.training)
+        h = F.dropout(h, p=G["dropout"], training=self.training)
         h = F.relu(self.conv2(h, edge_index))
         return self.out(h).squeeze(-1)
 
@@ -125,7 +125,7 @@ def fit_predict(train_years, test_graphs, use_edges=True):
     for seed in range(SEEDS):
         torch.manual_seed(seed)
         model = GNN(train.x.shape[1])
-        opt = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.005)
+        opt = torch.optim.Adam(model.parameters(), lr=G["lr"], weight_decay=G["weight_decay"])
         model.train()
         for _ in range(EPOCHS):
             opt.zero_grad()
@@ -162,7 +162,7 @@ def baseline_c_predict(train_years, test_year):
     Xtr = np.vstack([XC[y] for y in train_years])
     ytr = np.concatenate([Y[y] for y in train_years])
     sc = StandardScaler().fit(Xtr)
-    m = LogisticRegression(C=1.0, class_weight="balanced", max_iter=1000).fit(sc.transform(Xtr), ytr)
+    m = LogisticRegression(C=BASE["C"], class_weight=BASE["class_weight"], max_iter=BASE["max_iter"]).fit(sc.transform(Xtr), ytr)
     return m.predict_proba(sc.transform(XC[test_year]))[:, 1]
 
 # =============================================================================
@@ -191,14 +191,14 @@ def top3(d, col):
     return hits
 
 
-summary = {"settings": {"seeds": SEEDS, "epochs": EPOCHS, "hidden": HIDDEN, "layers": 2,
-                        "dropout": 0.2, "lr": 0.01, "weight_decay": 0.005}}
+summary = {"settings": {"seeds": SEEDS, "epochs": EPOCHS, "hidden": HIDDEN, "layers": G["layers"],
+                        "dropout": G["dropout"], "lr": G["lr"], "weight_decay": G["weight_decay"]}}
 summary["loyo"] = {col: {"auc": round(roc_auc_score(loyo.action, loyo[col]), 3),
                          "top3_hits": top3(loyo, col)}
                    for col in ["baseline_c", "gnn", "gnn_no_edges"]}
 
 # Year-clustered bootstrap: resample the 15 held-out years with replacement
-rng = np.random.default_rng(735)
+rng = np.random.default_rng(B["seed"])
 diffs, aucs_g, aucs_c = [], [], []
 groups = {y: loyo[loyo.year == y] for y in YEARS}
 for _ in range(BOOT):
@@ -230,7 +230,7 @@ summary["action_ranks"] = acts
 p25, p26 = fit_predict(YEARS, [X[2025], X[2026]], use_edges=True)
 oos = pd.DataFrame({"iso3": NODES, "gnn_2025": p25, "gnn_2026": p26})
 oos["rank_2025"] = oos.gnn_2025.rank(ascending=False, method="first").astype(int)
-EXITED = ["MLI", "BFA", "NER"]
+EXITED = CFG["exited_2025"]
 cur = oos[~oos.iso3.isin(EXITED)].copy()
 cur["member_rank_2026"] = cur.gnn_2026.rank(ascending=False, method="first").astype(int)
 oos = oos.merge(cur[["iso3", "member_rank_2026"]], on="iso3", how="left")

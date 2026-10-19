@@ -1,5 +1,7 @@
 # Forecasting ECOWAS Sanctions Risk with Graph Neural Networks
 
+[![CI](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml/badge.svg)](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml)
+
 When a West African government falls to a coup or stalls its return to civilian rule, the regional bloc ECOWAS often suspends it, sanctions it, or closes its borders, and those actions cut the country's imports well behind the rest of the region. This project asks whether conditions in a member state, measured the year before, can forecast that response, and whether modeling the region as a **network of bordering states** improves the forecast.
 
 It builds a country-year panel of all 15 ECOWAS members (2010 to 2024), benchmarks three penalized logistic regressions, and tests a **graph neural network (GraphSAGE, PyTorch Geometric)** against them under a pre-specified, leave-one-year-out protocol.
@@ -42,35 +44,68 @@ It builds a country-year panel of all 15 ECOWAS members (2010 to 2024), benchmar
 
 **Economic impact.** Change in real imports from the year before an action to the average of the action year and the year after, minus the median change among members with no action that year.
 
+## Data pipeline
+
+```
+ World Bank API ─┐
+ (or snapshot)   │      DuckDB warehouse (data/warehouse/ecowas.duckdb)
+ V-Dem release ──┼──►  raw ──► staging ──► features ──► checks ──► data/processed/ ──► models
+ ECOWAS events ──┤      (as      (clean,     (one row per    (stop on     (CSV for the
+ config.yaml ────┘       loaded)  renamed)    member-year)    bad data)    model scripts)
+```
+
+* **Ingest** (`pipeline/ingest.py`): World Bank indicators come from the World Bank API in live mode, or from the saved snapshot by default, so results are reproducible. V-Dem has no live API, so the pipeline loads a versioned release subset. Every load is recorded in `meta.load_log`.
+* **Transform** (`sql/staging.sql`, `sql/features.sql`): SQL models in DuckDB build the country-year feature table, including the lagged inputs, the region-wide coup counts, and the import damage measure.
+* **Checks** (`pipeline/checks.py`): 13 data quality checks, for example one row per member per year, a military rule index between 0 and 1, and two-way borders. The run stops if any check fails.
+* **Configuration** (`config.yaml`): years, members, the border network, data sources, paths, and every model setting are in one file.
+* **Tests and CI**: pytest covers API parsing, the SQL features, and the checks. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, and builds the Docker image.
+
 ## Repository structure
 
 ```
 ecowas-sanctions-gnn/
-├── data/
-│   ├── raw/                  # V-Dem subset, World Bank series, hand-coded ECOWAS events
-│   └── processed/            # ecowas_country_year.csv (the analysis panel)
+├── config.yaml               # every setting: years, members, borders, sources, models
+├── pipeline/                 # data pipeline: ingest, transform, checks, run
+├── sql/                      # DuckDB SQL models: staging and features
 ├── src/
-│   ├── build_dataset.py      # builds the panel from data/raw
 │   ├── analysis.py           # descriptives, economic impact, baselines, 2025 check, current risk
 │   ├── gnn.py                # graph neural network, ablation, bootstrap comparison
 │   ├── charts.py             # timeline, impact chart, risk map
 │   └── gnn_chart.py          # model comparison chart
+├── tests/                    # pytest suite
+├── scripts/                  # reproducibility check used by CI
+├── data/
+│   ├── raw/                  # V-Dem subset, World Bank snapshot, hand-coded ECOWAS events
+│   └── processed/            # ecowas_country_year.csv (the analysis panel)
 ├── results/                  # CSV and JSON outputs
-└── figures/                  # PNG figures
+├── figures/                  # PNG figures
+├── Dockerfile
+└── run_all.sh                # runs everything in order
 ```
 
 ## Reproduce
 
+With Docker:
+
+```bash
+docker build -t ecowas-gnn .
+docker run --rm ecowas-gnn                       # everything, with the saved data
+docker run --rm ecowas-gnn ./run_all.sh --live   # everything, with live World Bank data
+```
+
+Or locally, from the repository root:
+
 ```bash
 pip install -r requirements.txt
-python src/build_dataset.py   # optional: rebuilds data/processed from data/raw
+python -m pipeline.run        # data pipeline (add --live for the World Bank API)
 python src/analysis.py        # baselines and descriptive results
 python src/gnn.py             # graph neural network (about 8 minutes on a laptop CPU)
 python src/charts.py          # figures 1 to 3 (downloads Natural Earth shapes on first run)
 python src/gnn_chart.py       # figure 4
+pytest                        # tests
 ```
 
-Run every command from the repository root. Figures use the Inter typeface if it is installed and fall back to the default font otherwise.
+`./run_all.sh` runs the five steps in order. Figures use the Inter typeface if it is installed and fall back to the default font otherwise.
 
 ## Limitations
 
@@ -82,19 +117,17 @@ Run every command from the repository root. Figures use the Inter typeface if it
 
 ## Roadmap
 
-Work in progress, in planned order:
-
-* **Data pipeline:** pull V-Dem and World Bank data through their APIs, store raw, staging, and feature tables in DuckDB, and schedule monthly refreshes with Apache Airflow, with data quality checks at each step
-* **More events:** monthly country features from GDELT event data, for more training records and a six-month forecasting horizon
-* **Dashboard:** a Streamlit app with the risk map, the current watch list, and the import damage chart
-* **Engineering:** a Dockerfile, a single configuration file for all model settings, tests, and continuous integration with GitHub Actions
-* **Models:** a second graph architecture (graph attention network) and nested cross-validation to tune both networks without touching the test years
+* [x] **Foundation:** World Bank API ingestion, DuckDB warehouse with raw, staging, and feature layers, data quality checks, one configuration file, tests, CI, and Docker
+* [ ] **Orchestration:** schedule monthly refreshes with Apache Airflow
+* [ ] **More events:** monthly country features from GDELT event data, for more training records and a six-month forecasting horizon
+* [ ] **Dashboard:** a Streamlit app with the risk map, the current watch list, and the import damage chart
+* [ ] **Models:** a second graph architecture (graph attention network) and nested cross-validation to tune both networks without touching the test years
 
 ## Data sources
 
 * Coppedge, M., et al. *V-Dem Dataset v16.* Varieties of Democracy Project. Licensed CC BY-SA 4.0; the subset in `data/raw/vdem_ecowas_subset.csv` is shared under the same license.
 * Powell, J. M., and Thyne, C. L. (2011). Global Instances of Coups from 1950 to 2010: A New Dataset. *Journal of Peace Research*, 48(2), 249 to 259 (via V-Dem).
-* World Bank. *World Development Indicators.* Licensed CC BY 4.0.
+* World Bank. *World Development Indicators*, via the World Bank API. Licensed CC BY 4.0.
 * Natural Earth. *Admin 0 Countries, 1:50m.* Public domain.
 * ECOWAS Commission communiqués and news coverage, hand-coded by the author.
 

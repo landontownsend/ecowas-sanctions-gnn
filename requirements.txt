@@ -1,7 +1,5 @@
-pandas>=2.0
-numpy>=1.26
-requests>=2.31
-scikit-learn>=1.4
+# Full install: pipeline, baselines, graph neural network, and figures
+-r requirements-pipeline.txt
 matplotlib>=3.8
 torch>=2.2
 torch-geometric>=2.5
