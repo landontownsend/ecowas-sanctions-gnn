@@ -89,10 +89,15 @@ pipeline/          ingest.py, transform.py, checks.py, run.py, config.py
 sql/               staging.sql, features.sql (DuckDB SQL models)
 src/               analysis.py (Baselines A to C), gnn.py (Baseline C v2, GNN v2),
                    watchlist.py, charts.py, gnn_chart.py
-tests/             pytest: 31 tests + 1 live World Bank API test
+dags/              Airflow 3 DAGs: ecowas_monthly, ecowas_models
+pipeline/tasks.py  one plain function per Airflow task
+docker/            airflow.Dockerfile; docker-compose.yaml at the root
+tests/             pytest: 36 tests + 1 live World Bank API test (+3 DAG tests
+                   that run when Airflow is installed)
 scripts/           check_reproducible.py, make_vdem_subset.py,
                    refresh_world_bank.py, refresh_gdelt.py
-.github/workflows/ ci.yml: test, live-api (non-blocking), gnn-smoke, docker
+.github/workflows/ ci.yml: test, live-api (non-blocking), gnn-smoke, dag-test,
+                   airflow-compose (runs the monthly DAG in the image), docker
                    refresh-data.yml: World Bank and GDELT snapshots
                    run-models.yml: the full run, outputs committed
 Dockerfile, run_all.sh, requirements.txt, requirements-pipeline.txt
@@ -172,6 +177,15 @@ one-minute smoke test), `pytest`, or `./run_all.sh`.
 - The full V-Dem dataset is in the public `vdeminstitute/vdemdata` repository
   (`data/vdem.RData`), which the workspace can clone;
   `scripts/make_vdem_subset.py` builds the subset from it.
+- Airflow can be tested in the workspace: a Python 3.12 virtual environment
+  (`uv venv -p 3.12`) with `apache-airflow==3.3.2` and its constraints file
+  from raw.githubusercontent.com, then `airflow db migrate` and
+  `airflow dags test ecowas_monthly -c '{"live": false, "update_gdelt": false}'`.
+  A DAG run whose logical date is before the DAG's start_date creates no tasks
+  and still reports success; the DAGs' start dates are in the past for that
+  reason. In Airflow 3, `DagBag(...).get_dag()` needs the database; tests use
+  `dagbag.dags[...]`. A folder named `airflow/` at the repository root hides
+  the Airflow package from Python, so the Docker files are in `docker/`.
 - PyTorch installs in the workspace from PyPI (the GPU build, about 4 GB with its
   libraries; it runs on CPU), so `python src/gnn.py --quick` can be tested here.
 - The owner's local copy is a clone on his Mac; he runs `git pull` to update it.
@@ -182,13 +196,17 @@ one-minute smoke test), `pytest`, or `./run_all.sh`.
   warehouse, data checks, tests, CI, Docker (PR #1)
 - [x] **Version 2:** 2001 start, more features, GDELT, GAT, nested tuning.
   See section 7.
-- [ ] **Phase 2, orchestration:** an Apache Airflow DAG that runs the
-  pipeline monthly. Planned tasks: ingest (live) -> transform -> checks ->
-  export -> baselines -> publish the dated watch list. The GNN can be a separate
-  or less frequent task because it takes about 8 minutes. Run Airflow locally
-  with Docker Compose, reuse the functions in `pipeline/` as tasks, and add a
-  DAG integrity test to CI. The owner has built an Airflow DAG before (a Reddit
-  ETL project).
+- [x] **Phase 2, orchestration (October 24, 2026):** Airflow 3.3.2.
+  `ecowas_monthly` (2nd of each month): update_gdelt -> ingest (live World
+  Bank) -> transform -> checks -> export -> baselines -> watch_list -> publish
+  (`runs/YYYY-MM-DD/` with `changes.md`). `ecowas_models` (by hand): gnn_full ->
+  figures -> publish_models. GDELT updates are incremental (`refresh_gdelt.py
+  --update`: only new complete months). `gnn.py --watch-list` refits Baseline C
+  v2 in seconds; its output is identical to the full run's. `ECOWAS_DATA_DIR`
+  moves the warehouse, GDELT snapshot, and runs out of the repository. Docker
+  Compose: Airflow standalone + Postgres. Verified: `airflow dags test` here,
+  and in CI inside the image (54 seconds; live World Bank; GDELT added
+  January to September 2026 from 273 files).
 - [ ] **Phase 3, monthly panel:** the GDELT snapshot is built (version 2) and
   is already monthly; next is a country-month panel and a six-month horizon.
 - [ ] **Phase 4, dashboard:** a Streamlit app with the risk map, the live watch
