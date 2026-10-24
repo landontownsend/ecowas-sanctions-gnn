@@ -30,6 +30,7 @@ import json
 import re
 import sys
 import time
+import traceback
 import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -77,7 +78,21 @@ def download(name):
             time.sleep(10 * (attempt + 1))
 
 
+def annotate(level, message):
+    """Print a GitHub Actions annotation (readable through the API) and a normal line."""
+    print(f"::{level}::{message}", flush=True)
+
+
 def count_file(name):
+    """Count one file. Returns (name, counts, rows read, error message or None)."""
+    try:
+        counts, rows = count_file_inner(name)
+        return name, counts, rows, None
+    except Exception as e:                      # record the problem; main() decides
+        return name, pd.DataFrame(), 0, f"{type(e).__name__}: {e}"[:300]
+
+
+def count_file_inner(name):
     """Count events by member, year, and month in one GDELT file."""
     data = download(name)
     counts = []
@@ -95,7 +110,8 @@ def count_file(name):
                 roots = chunk["root"].dropna()
                 good = roots.str.fullmatch(r"\d{2}") & roots.astype(str).between("01", "20")
                 if len(roots) > 1000 and good.mean() < 0.95:
-                    raise ValueError(f"{name}: column 28 does not look like EventRootCode")
+                    raise ValueError(f"column 28 does not look like EventRootCode "
+                                     f"(only {good.mean():.0%} valid; first values {list(roots[:5])})")
                 chunk = chunk[chunk["fips"].isin(FIPS_TO_ISO)]
                 chunk = chunk[chunk["date"].str.fullmatch(r"\d{8}", na=False)]
                 chunk = chunk.assign(
@@ -111,23 +127,31 @@ def count_file(name):
                                    events_violence=("violence", "sum"))
                               .reset_index())
     out = pd.concat(counts) if counts else pd.DataFrame()
-    return name, out, rows_read
+    return out, rows_read
 
 
 def main():
     files = list_files()
-    print(f"{len(files)} GDELT files cover {G['first_year']} to {G['last_year']}: "
-          f"{files[0]} ... {files[-1]}", flush=True)
+    annotate("notice", f"{len(files)} GDELT files cover {G['first_year']} to {G['last_year']}: "
+                       f"{files[:3]} ... {files[-1]}")
     if len(files) < 100:
         raise SystemExit("Too few files found on the index page; stopping.")
 
-    parts, total_rows = [], 0
+    parts, total_rows, errors = [], 0, []
     with ProcessPoolExecutor(max_workers=6) as pool:
-        for i, (name, counts, rows) in enumerate(pool.map(count_file, files), start=1):
+        for i, (name, counts, rows, error) in enumerate(pool.map(count_file, files), start=1):
+            if error:
+                errors.append(f"{name}: {error}")
+                annotate("warning", f"skipped {name}: {error}")
             parts.append(counts)
             total_rows += rows
-            if i % 200 == 0 or i == len(files):
+            if i % 500 == 0 or i == len(files):
                 print(f"  {i} of {len(files)} files, {total_rows:,} rows read", flush=True)
+
+    # A few bad files are recorded and skipped; more than 1% stops the run
+    if len(errors) > max(5, len(files) // 100):
+        annotate("error", f"{len(errors)} of {len(files)} files failed. First: {errors[:5]}")
+        raise SystemExit(1)
 
     # Add up across files (a month can appear in several daily files)
     allc = pd.concat(parts).groupby(["iso3", "year", "month"]).sum().reset_index()
@@ -143,11 +167,20 @@ def main():
 
     out.to_csv(G["snapshot"], index=False)
     manifest = {"files": len(files), "first_file": files[0], "last_file": files[-1],
-                "rows_read": total_rows, "member_events": int(out.events_total.sum()),
+                "files_skipped": errors, "rows_read": total_rows,
+                "member_events": int(out.events_total.sum()),
                 "built": time.strftime("%Y-%m-%d")}
+    annotate("notice", f"GDELT done: {len(files) - len(errors)} files, {total_rows:,} rows, "
+                       f"{manifest['member_events']:,} events in members")
     Path(G["snapshot"]).with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        annotate("error", traceback.format_exc().strip().replace("\n", " | ")[-900:])
+        raise
