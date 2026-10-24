@@ -3,18 +3,18 @@ analysis.py
 ECOWAS sanctions risk: descriptive results, import damage, and baseline forecasts
 
 Run from the repository root:  python src/analysis.py
-Reads:  data/processed/ecowas_country_year.csv
-        data/raw/vdem_ecowas_subset.csv
-        data/raw/world_bank.csv
+Reads:  data/processed/ecowas_country_year.csv   (study period, from the pipeline)
+        data/processed/ecowas_forecast_inputs.csv (years after it, from the pipeline)
 Writes: results/*.csv and results/summary.json
+Years and watch list settings come from config.yaml.
 
 Sections
   1. Load data and border connections
   2. Descriptive patterns (actions over time, coups vs actions)
   3. Economic impact: import change in action years
   4. Forecast models (Stage 1, Baselines A to C): leave-one-year-out
-  5. Out-of-sample check: score 2025 from 2024 conditions
-  6. Current risk: score the next 12 months from 2025 conditions
+  5. Out-of-sample check: score the check year (years.check in config.yaml)
+  6. Current risk: score the forecast year (years.forecast), the watch list
 """
 
 import json
@@ -29,8 +29,9 @@ from sklearn.preprocessing import StandardScaler
 # Every setting comes from config.yaml in the repository root
 CFG = yaml.safe_load(open("config.yaml"))
 BASE = CFG["models"]["baseline"]
+CHECK = CFG["years"]["check"]          # 2025: the out-of-sample check year
+FORECAST = CFG["years"]["forecast"]    # 2026: the watch list year
 
-DATA = "data"
 OUT = CFG["paths"]["results"]
 os.makedirs(OUT, exist_ok=True)
 summary = {}
@@ -39,9 +40,12 @@ summary = {}
 # SECTION 1: DATA AND BORDER CONNECTIONS
 # The border list is the network: each pair of ECOWAS members that share a land
 # border is connected. Cabo Verde is an island and has no connections.
+# The pipeline (sql/features.sql) has already built every model input,
+# including the border features, so this script only reads them.
 # =============================================================================
 
-df = pd.read_csv(CFG["paths"]["features_csv"])
+df = pd.read_csv(CFG["paths"]["features_csv"])          # study period, one row per member per year
+forecast = pd.read_csv(CFG["paths"]["forecast_csv"])    # years after the study period, inputs only
 
 BORDERS = CFG["borders"]   # the border network, from config.yaml
 pd.DataFrame([(a, b) for a, nbrs in BORDERS.items() for b in nbrs],
@@ -49,46 +53,6 @@ pd.DataFrame([(a, b) for a, nbrs in BORDERS.items() for b in nbrs],
 
 # Mali, Burkina Faso and Niger left ECOWAS on January 29, 2025
 EXITED_2025 = CFG["exited_2025"]
-
-
-def add_network_features(panel):
-    """
-    Network features: what is happening in the countries a member borders.
-      border_military_max_lag1: highest military rule score among border
-                                neighbors last year
-      border_coups_prev3:       successful coups in border neighbors over the
-                                previous three years
-    """
-    mil = {(r.iso3, r.year): r.military_rule_index for r in panel.itertuples()}
-    coup = {(r.iso3, r.year): r.coups_successful for r in panel.itertuples()}
-    mil_max, coups3 = [], []
-    for r in panel.itertuples():
-        nbrs = BORDERS[r.iso3]
-        vals = [mil.get((n, r.year - 1)) for n in nbrs]
-        vals = [v for v in vals if v is not None and not np.isnan(v)]
-        mil_max.append(max(vals) if vals else 0.0)
-        coups3.append(sum(coup.get((n, y), 0) or 0
-                          for n in nbrs for y in range(r.year - 3, r.year)))
-    panel["border_military_max_lag1"] = mil_max
-    panel["border_coups_prev3"] = coups3
-    return panel
-
-
-# Extend the panel with 2009 and 2025 V-Dem values so neighbor features and the
-# 2025-2026 scores have the years they need.
-vdem = pd.read_csv(CFG["sources"]["vdem"]["file"])
-name_to_iso = {"Ivory Coast": "CIV", "Cape Verde": "CPV", "The Gambia": "GMB"}
-vdem["iso3"] = vdem["country_text_id"]
-vdem = vdem.rename(columns={"e_pt_coup": "coups_successful",
-                            "v2x_ex_military": "military_rule_index",
-                            "v2cagenmob": "mass_mobilization"})
-# V-Dem leaves 2025 coup counts blank where no coup occurred, so blank means 0
-vdem["coups_successful"] = vdem["coups_successful"].fillna(0)
-wide = vdem[["iso3", "year", "coups_successful", "military_rule_index", "mass_mobilization"]]
-wide = wide[wide.year.between(2006, 2025)].copy()
-wide = add_network_features(wide)
-df = df.merge(wide[["iso3", "year", "border_military_max_lag1", "border_coups_prev3"]],
-              on=["iso3", "year"], how="left")
 
 # =============================================================================
 # SECTION 2: DESCRIPTIVE PATTERNS
@@ -220,68 +184,74 @@ def fit_full(data, feats):
 
 # =============================================================================
 # SECTION 5: OUT-OF-SAMPLE CHECK
-# Train on 2010-2024, then score 2025 using 2024 conditions. Compare with what
-# happened in 2025: Guinea-Bissau's coup (Nov 26) and ECOWAS suspension (Nov 27);
-# Benin's failed coup attempt (Dec 7), which drew no suspension or sanctions.
+# Train on the study period, then score the check year (2025) using the year
+# before (2024). Compare with what happened in 2025: Guinea-Bissau's coup
+# (Nov 26) and ECOWAS suspension (Nov 27); Benin's failed coup attempt (Dec 7),
+# which drew no suspension or sanctions.
 # =============================================================================
 
-v = wide.set_index(["iso3", "year"])
+
+# The inputs of Baselines A to C, saved next to each score
+INPUTS = OWN + ["neighbor_coups_prev3", "border_military_max_lag1", "border_coups_prev3"]
 
 
-def score_year(target_year, feats, sc, m):
-    """Build inputs for target_year from the prior years' V-Dem values and score every member."""
-    prev = target_year - 1
-    def coup(iso, y):
-        return v.loc[(iso, y), "coups_successful"] if (iso, y) in v.index else 0
-    rows = []
-    for iso in BORDERS:
-        nbrs = BORDERS[iso]
-        rows.append({
-            "iso3": iso,
-            "military_rule_index_lag1": v.loc[(iso, prev), "military_rule_index"],
-            "coups_successful_lag1": coup(iso, prev),
-            "neighbor_coups_prev3": sum(coup(o, y) for o in BORDERS if o != iso
-                                        for y in range(target_year - 3, target_year)),
-            "border_military_max_lag1": max([v.loc[(n, prev), "military_rule_index"] for n in nbrs], default=0.0),
-            "border_coups_prev3": sum(coup(n, y) for n in nbrs
-                                      for y in range(target_year - 3, target_year)),
-        })
-    s = pd.DataFrame(rows)
+def score_year(year, feats, sc, m):
+    """Score every member in one forecast year, using the inputs the pipeline built."""
+    s = forecast.loc[forecast.year == year, ["iso3"] + INPUTS].copy()
     s["risk"] = m.predict_proba(sc.transform(s[feats]))[:, 1]
     s["rank"] = s["risk"].rank(ascending=False, method="first").astype(int)
     return s.sort_values("rank")
 
-# Add 2025 rows to the V-Dem table so 2025 network features exist
+
 sc_n, m_n = fit_full(model_df, NETWORK)
-oos = score_year(2025, NETWORK, sc_n, m_n)
-oos.round(3).to_csv(f"{OUT}/oos_2025.csv", index=False)
-summary["oos_2025_top5"] = oos.head(5)[["iso3", "risk", "rank"]].round(3).to_dict("records")
-summary["oos_2025_gnb_rank"] = int(oos[oos.iso3 == "GNB"]["rank"].iloc[0])
-summary["oos_2025_ben_rank"] = int(oos[oos.iso3 == "BEN"]["rank"].iloc[0])
+oos = score_year(CHECK, NETWORK, sc_n, m_n)
+oos.round(3).to_csv(f"{OUT}/oos_{CHECK}.csv", index=False)
+summary[f"oos_{CHECK}_top5"] = oos.head(5)[["iso3", "risk", "rank"]].round(3).to_dict("records")
+summary[f"oos_{CHECK}_gnb_rank"] = int(oos[oos.iso3 == "GNB"]["rank"].iloc[0])
+summary[f"oos_{CHECK}_ben_rank"] = int(oos[oos.iso3 == "BEN"]["rank"].iloc[0])
 
 # =============================================================================
-# SECTION 6: CURRENT RISK (NEXT 12 MONTHS)
-# Train on all years through 2024 and score using 2025 conditions.
-# Mali, Burkina Faso and Niger are scored but flagged, since they are no
-# longer members and cannot be suspended by ECOWAS.
+# SECTION 6: CURRENT RISK (THE WATCH LIST)
+# Train on the study period and score the forecast year (2026) using the year
+# before (2025). Mali, Burkina Faso and Niger are scored but flagged, since
+# they are no longer members and cannot be suspended by ECOWAS.
+# The tiers, suspended members, and context notes come from config.yaml.
 # =============================================================================
 
-wide26 = wide.copy()
-now = score_year(2026, NETWORK, sc_n, m_n)
-now["status"] = np.where(now.iso3.isin(EXITED_2025), "Left ECOWAS (2025)",
-                         np.where(now.iso3 == "GNB", "Suspended (Nov 2025)", "Member"))
+WATCH = CFG["watch_list"]
+
+
+def member_status(iso3):
+    """Left ECOWAS, suspended, or a member in good standing."""
+    if iso3 in EXITED_2025:
+        return "Left ECOWAS (2025)"
+    if iso3 in WATCH["suspended"]:
+        return WATCH["suspended"][iso3]
+    return "Member"
+
+
+def tier(risk, status):
+    """One tier rule, used by risk_next12.csv, summary.json, and the risk map."""
+    if status == "Left ECOWAS (2025)":
+        return "Left ECOWAS"
+    if risk >= WATCH["tiers"]["high"]:
+        return "High"
+    if risk >= WATCH["tiers"]["elevated"]:
+        return "Elevated"
+    return "Lower"
+
+
+now = score_year(FORECAST, NETWORK, sc_n, m_n)
+now["status"] = [member_status(iso) for iso in now.iso3]
 members = now[now.status != "Left ECOWAS (2025)"].copy()
 members["member_rank"] = members["risk"].rank(ascending=False, method="first").astype(int)
 now = now.merge(members[["iso3", "member_rank"]], on="iso3", how="left")
-# Risk tiers among current members
-now["tier"] = pd.cut(now["risk"], bins=[-1, 0.25, 0.5, 2], labels=["Lower", "Elevated", "High"])
-now.round(3).to_csv(f"{OUT}/risk_next12.csv", index=False)
+now["tier"] = [tier(r, st) for r, st in zip(now.risk, now.status)]
+now["context"] = now.iso3.map(WATCH["context"]).fillna("")
+now["risk_score_0_100"] = (now.risk * 100).round(0).astype(int)
+now.to_csv(f"{OUT}/risk_next12.csv", index=False)
 summary["risk_next12"] = now[["iso3", "risk", "member_rank", "status", "tier"]] \
     .round(3).astype(str).to_dict("records")
-
-with open(f"{OUT}/summary.json", "w") as f:
-    json.dump(summary, f, indent=2, default=str)
-print(json.dumps(summary, indent=2, default=str))
 
 # =============================================================================
 # SECTION 7: EXTRA CHECKS FOR THE PRESENTATION
@@ -297,19 +267,6 @@ summary["held_out_2024_junta_scores"] = fp24[["iso3", "pred_network"]].round(3).
 summary["impact_median_excess_landlocked"] = round(float(impact[impact.landlocked == 1].excess_import_change.median()), 1)
 summary["impact_median_excess_coastal"] = round(float(impact[impact.landlocked == 0].excess_import_change.median()), 1)
 
-# Risk tiers for current members (relative scores from the network model)
-def tier(r):
-    return "High" if r >= 0.85 else ("Elevated" if r >= 0.70 else "Lower")
-now["tier"] = [("Left ECOWAS" if st == "Left ECOWAS (2025)" else tier(r))
-               for r, st in zip(now.risk, now.status)]
-context = {
-    "GNB": "Military council since Nov 2025; suspended; elections promised by Dec 6, 2026",
-    "GIN": "Readmitted Jan 2026 after Doumbouya's election; model does not yet see this",
-    "BEN": "Failed coup attempt Dec 7, 2025; borders Niger and Burkina Faso",
-}
-now["context"] = now.iso3.map(context).fillna("")
-now["risk_score_0_100"] = (now.risk * 100).round(0).astype(int)
-now.to_csv(f"{OUT}/risk_next12.csv", index=False)
-
 with open(f"{OUT}/summary.json", "w") as f:
     json.dump(summary, f, indent=2, default=str)
+print(json.dumps(summary, indent=2, default=str))

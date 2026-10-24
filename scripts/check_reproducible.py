@@ -15,14 +15,17 @@ from pathlib import Path
 
 import pandas as pd
 
-FILES = [Path("data/processed/ecowas_country_year.csv")] + sorted(Path("results").glob("*.*"))
+FILES = sorted(Path("data/processed").glob("*.csv")) + sorted(Path("results").glob("*.*"))
 TOLERANCE = 1e-6
 
 
 def committed(path):
-    """The version of a file in the last commit."""
-    return subprocess.run(["git", "show", f"HEAD:{path.as_posix()}"],
-                          capture_output=True, text=True, check=True).stdout
+    """The version of a file in the last commit, or None if the file is new."""
+    result = subprocess.run(["git", "show", f"HEAD:{path.as_posix()}"],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout
 
 
 def same_json(a, b):
@@ -38,6 +41,9 @@ def same_json(a, b):
 failures = []
 for path in FILES:
     old = committed(path)
+    if old is None:
+        failures.append(f"{path}: new file, not in the last commit yet")
+        continue
     if path.suffix == ".csv":
         try:
             pd.testing.assert_frame_equal(pd.read_csv(path), pd.read_csv(io.StringIO(old)),

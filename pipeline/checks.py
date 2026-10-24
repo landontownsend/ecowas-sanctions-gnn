@@ -13,8 +13,10 @@ class DataQualityError(Exception):
 def build_checks(cfg):
     """Return a list of (check name, SQL that counts problem rows)."""
     start, end = cfg["years"]["start"], cfg["years"]["end"]
+    forecast = cfg["years"]["forecast"]
     n_countries = len(cfg["countries"])
     n_years = end - start + 1
+    n_forecast_years = forecast - end
     return [
         # --- raw layer --------------------------------------------------------
         ("World Bank data covers every member",
@@ -56,6 +58,21 @@ def build_checks(cfg):
         ("Every hand-coded action in the study period appears in the features",
          f"SELECT (SELECT COUNT(*) FROM staging.actions WHERE year BETWEEN {start} AND {end}) "
          "- (SELECT SUM(ecowas_action) FROM features.country_year)"),
+        ("Border features are filled in, and border military rule is between 0 and 1",
+         "SELECT COUNT(*) FROM features.country_year_all "
+         "WHERE border_military_max_lag1 IS NULL OR border_coups_prev3 IS NULL "
+         "OR border_military_max_lag1 < 0 OR border_military_max_lag1 > 1"),
+
+        # --- forecast inputs --------------------------------------------------
+        (f"Forecast inputs have all {n_countries} members for each year from {end + 1} to {forecast}",
+         f"SELECT ABS(COUNT(*) - {n_countries * n_forecast_years}) "
+         f"+ (SELECT COUNT(*) FROM features.forecast_inputs WHERE year <= {end} OR year > {forecast}) "
+         "FROM features.forecast_inputs"),
+        ("No missing forecast inputs",
+         "SELECT COUNT(*) FROM features.forecast_inputs "
+         "WHERE military_rule_index_lag1 IS NULL OR coups_successful_lag1 IS NULL "
+         "OR neighbor_coups_prev3 IS NULL OR border_military_max_lag1 IS NULL "
+         "OR border_coups_prev3 IS NULL OR coups_successful_prev3 IS NULL"),
     ]
 
 
