@@ -92,7 +92,8 @@ src/               analysis.py (Baselines A to C), gnn.py (Baseline C v2, GNN v2
 dags/              Airflow 3 DAGs: ecowas_monthly, ecowas_models
 pipeline/tasks.py  one plain function per Airflow task
 docker/            airflow.Dockerfile; docker-compose.yaml at the root
-tests/             pytest: 42 tests + 1 live World Bank API test (+3 DAG tests
+dashboard/         app.py (Streamlit), requirements.txt
+tests/             pytest: 44 tests + 1 live World Bank API test (+3 DAG tests
                    that run when Airflow is installed)
 scripts/           check_reproducible.py, make_vdem_subset.py,
                    refresh_world_bank.py, refresh_gdelt.py
@@ -222,8 +223,17 @@ one-minute smoke test), `pytest`, or `./run_all.sh`.
   design first. Hold out whole years with a six-month gap on each side, because
   neighboring months share outcome windows. The 2001 to 2024 years have been
   seen, so judge it mainly on 2025 onward.
-- [ ] **Phase 4, dashboard:** a Streamlit app with the risk map, the live watch
-  list, and the import damage chart, reading from the DuckDB warehouse.
+- [x] **Phase 4, dashboard (October 24, 2026):** `dashboard/app.py`, five tabs
+  (watch list map and table, monthly GDELT trends, economic impact, models,
+  data). Reads committed files, so it runs on Streamlit Community Cloud; with
+  `ECOWAS_DATA_DIR` it shows the newest Airflow run and `meta.load_log`. The map
+  is drawn as filled shapes from `data/geo/west_africa.geojson`, because Plotly's
+  geographic maps download a base map from cdn.plot.ly (blocked in the
+  workspace, and an outside dependency). Own `dashboard/requirements.txt`
+  (Community Cloud reads the file next to the app, so PyTorch is not
+  installed there). Tests: Streamlit AppTest; CI also starts the container.
+  Deploying needs the owner's Streamlit account (share.streamlit.io: repository
+  `landontownsend/ecowas-sanctions-gnn`, branch `main`, file `dashboard/app.py`).
 - [x] **Phase 5, models:** done as part of version 2 (GAT and nested
   cross-validation).
 

@@ -105,6 +105,22 @@ jobs:
           cat airflow-data/runs/*/changes.md
           python3 -c "import json; m = json.load(open('airflow-data/gdelt_country_month.json')); print('::notice::GDELT updates:', m.get('updates'))"
           test -f airflow-data/ecowas.duckdb
+      - name: Start the dashboard container and check that it answers
+        run: |
+          docker compose up -d --build dashboard
+          for i in $(seq 1 30); do curl -sf http://localhost:8501/_stcore/health && break; sleep 2; done
+          curl -sf http://localhost:8501/_stcore/health
+
+  # The dashboard runs without errors (Streamlit's test tool)
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r dashboard/requirements.txt pytest
+      - run: pytest -v tests/test_dashboard.py
 
   # The Docker image builds and runs the pipeline and baselines
   docker:
