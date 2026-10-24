@@ -12,12 +12,16 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+import yaml
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.lines import Line2D
+
+CFG = yaml.safe_load(open("config.yaml"))
+START, END = CFG["years"]["start"], CFG["years"]["end"]   # the study period, 2010 to 2024
 
 OUT = "figures"
 os.makedirs(OUT, exist_ok=True)
@@ -66,10 +70,10 @@ SEV_LABEL = {1: "Suspension", 2: "Sanctions", 3: "Border closure"}
 
 rows = ["MLI", "GIN", "BFA", "NER", "GNB", "CIV"]
 fig, ax = plt.subplots(figsize=(16, 6.6), dpi=150)
-years = list(range(2010, 2025))
+years = list(range(START, END + 1))
 for i, iso in enumerate(rows):
     y = len(rows) - 1 - i
-    ax.plot([2009.6, 2024.4], [y, y], color=GRID, lw=1, zorder=0)
+    ax.plot([START - 0.4, END + 0.4], [y, y], color=GRID, lw=1, zorder=0)
     sub = df[df.iso3 == iso]
     for r in sub.itertuples():
         if r.action_severity > 0:
@@ -84,7 +88,7 @@ ax.set_yticks(range(len(rows)))
 ax.set_yticklabels([NAMES[c] for c in reversed(rows)], fontsize=22, color=INK)
 ax.set_xticks(years)
 ax.set_xticklabels([str(y) if y % 2 == 0 else "" for y in years], fontsize=20)
-ax.set_xlim(2009.4, 2024.6)
+ax.set_xlim(START - 0.6, END + 0.6)
 ax.set_ylim(-0.7, len(rows) - 0.3)
 ax.axvspan(2019.5, 2023.5, color="#ECE6DA", zorder=-1)
 ax.text(2021.5, len(rows) - 0.45, "2020 to 2023 coup wave", ha="center", va="bottom",

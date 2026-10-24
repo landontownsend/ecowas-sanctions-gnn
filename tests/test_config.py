@@ -23,5 +23,15 @@ def test_cabo_verde_has_no_land_borders(cfg):
     assert cfg["borders"]["CPV"] == []
 
 
+def test_years_are_in_order(cfg):
+    years = cfg["years"]
+    assert years["start"] <= years["end"] < years["check"] <= years["forecast"]
+
+
+def test_watch_list_tiers_are_in_order(cfg):
+    tiers = cfg["watch_list"]["tiers"]
+    assert 0 < tiers["elevated"] < tiers["high"] < 1
+
+
 def test_exited_members_are_members(cfg):
     assert set(cfg["exited_2025"]) <= set(cfg["borders"])

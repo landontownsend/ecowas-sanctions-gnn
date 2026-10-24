@@ -69,7 +69,7 @@
       "risk": "0.989",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
-      "tier": "High"
+      "tier": "Left ECOWAS"
     },
     {
       "iso3": "GIN",
@@ -83,7 +83,7 @@
       "risk": "0.989",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
-      "tier": "High"
+      "tier": "Left ECOWAS"
     },
     {
       "iso3": "GNB",
@@ -97,7 +97,7 @@
       "risk": "0.982",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
-      "tier": "High"
+      "tier": "Left ECOWAS"
     },
     {
       "iso3": "BEN",
@@ -111,49 +111,49 @@
       "risk": "0.802",
       "member_rank": "4.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Elevated"
     },
     {
       "iso3": "LBR",
       "risk": "0.802",
       "member_rank": "5.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Elevated"
     },
     {
       "iso3": "NGA",
       "risk": "0.779",
       "member_rank": "6.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Elevated"
     },
     {
       "iso3": "SLE",
       "risk": "0.734",
       "member_rank": "7.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Elevated"
     },
     {
       "iso3": "TGO",
       "risk": "0.719",
       "member_rank": "8.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Elevated"
     },
     {
       "iso3": "SEN",
       "risk": "0.567",
       "member_rank": "9.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Lower"
     },
     {
       "iso3": "GHA",
       "risk": "0.501",
       "member_rank": "10.0",
       "status": "Member",
-      "tier": "High"
+      "tier": "Lower"
     },
     {
       "iso3": "GMB",
