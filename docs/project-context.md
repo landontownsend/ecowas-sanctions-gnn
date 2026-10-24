@@ -3,8 +3,9 @@
 This file records the state of the project, the decisions behind it, and the
 plan for the next phases. Read it first before starting new work.
 
-Last updated: October 24, 2026, cleanup before Phase 2 (branch
-`cleanup-before-phase-2`).
+Last updated: October 24, 2026, version 2 (branch `v2-stronger-gnn`).
+Sections 1 and 2 describe version 1; section 7 has the version 2 design and
+results.
 
 ## 1. What the project is
 
@@ -80,22 +81,32 @@ C. The GNN still supports the main finding: removing border edges drops its AUC
 from 0.74 to 0.66, a second, separate test that neighbors matter. Do not present
 the GNN as the winner.
 
-## 3. Repository state after Phase 1
+## 3. Repository state (version 2)
 
 ```
 config.yaml        every setting: years, members, borders, sources, paths, models
 pipeline/          ingest.py, transform.py, checks.py, run.py, config.py
 sql/               staging.sql, features.sql (DuckDB SQL models)
-src/               analysis.py (baselines), gnn.py, charts.py, gnn_chart.py
-tests/             pytest: 26 tests + 1 live World Bank API test
-scripts/           check_reproducible.py (compares outputs with committed files)
-.github/workflows/ ci.yml: test, live-api (non-blocking), docker
+src/               analysis.py (Baselines A to C), gnn.py (Baseline C v2, GNN v2),
+                   watchlist.py, charts.py, gnn_chart.py
+tests/             pytest: 31 tests + 1 live World Bank API test
+scripts/           check_reproducible.py, make_vdem_subset.py,
+                   refresh_world_bank.py, refresh_gdelt.py
+.github/workflows/ ci.yml: test, live-api (non-blocking), gnn-smoke, docker
+                   refresh-data.yml: World Bank and GDELT snapshots
+                   run-models.yml: the full run, outputs committed
 Dockerfile, run_all.sh, requirements.txt, requirements-pipeline.txt
 ```
 
+- Data (version 2): V-Dem v16 subset 1980 to 2025 (from `vdeminstitute/vdemdata`);
+  World Bank 2000 to 2025 (one vintage, October 24, 2026); GDELT 1.0 counts by
+  member and month, 2000 to 2025 (4,727 files, 833 million rows read, 29.4
+  million events in members; 2 daily files listed by GDELT but missing on its
+  server, recorded in `data/raw/gdelt_country_month.json`); 21 event rows.
 - Pipeline: ingest (World Bank API with `--live`, or the saved snapshot by
-  default; V-Dem release subset; events; reference data from config) into
-  DuckDB `raw`, then SQL `staging` and `features`, then 16 data quality checks,
+  default; V-Dem release subset; events; GDELT snapshot; reference data from
+  config) into DuckDB `raw`, then SQL `staging` and `features`, then 20 data
+  quality checks,
   then export to `data/processed/ecowas_country_year.csv` (study period) and
   `data/processed/ecowas_forecast_inputs.csv` (the years after it).
 - Every model input is built once, in `sql/features.sql`, including the border
@@ -126,7 +137,8 @@ Two intended changes:
   `python scripts/check_reproducible.py` locally to confirm.
 
 Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
-`python src/gnn.py` (about 8 minutes on CPU), `pytest`, or `./run_all.sh`.
+`python src/gnn.py` (version 2: 20 to 40 minutes on 4 cores; `--quick` for a
+one-minute smoke test), `pytest`, or `./run_all.sh`.
 
 ## 4. Working conventions
 
@@ -168,8 +180,8 @@ Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
 
 - [x] **Phase 1, foundation:** config, World Bank API ingestion, DuckDB
   warehouse, data checks, tests, CI, Docker (PR #1)
-- [ ] **Version 2 (in progress):** 2001 start, more features, GDELT, GAT,
-  nested tuning. See section 7.
+- [x] **Version 2:** 2001 start, more features, GDELT, GAT, nested tuning.
+  See section 7.
 - [ ] **Phase 2, orchestration:** an Apache Airflow DAG that runs the
   pipeline monthly. Planned tasks: ingest (live) -> transform -> checks ->
   export -> baselines -> publish the dated watch list. The GNN can be a separate
@@ -177,15 +189,12 @@ Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
   with Docker Compose, reuse the functions in `pipeline/` as tasks, and add a
   DAG integrity test to CI. The owner has built an Airflow DAG before (a Reddit
   ETL project).
-- [ ] **Phase 3, GDELT:** monthly country features from GDELT events (protests,
-  military activity, statements about ECOWAS), for more training records and a
-  six-month forecasting horizon. Options: the GDELT public dataset in Google
-  BigQuery, or the raw event files. Network access must be solved first.
+- [ ] **Phase 3, monthly panel:** the GDELT snapshot is built (version 2) and
+  is already monthly; next is a country-month panel and a six-month horizon.
 - [ ] **Phase 4, dashboard:** a Streamlit app with the risk map, the live watch
   list, and the import damage chart, reading from the DuckDB warehouse.
-- [ ] **Phase 5, models:** a graph attention network (GAT) as a second graph
-  model, and nested cross-validation to tune both networks without touching the
-  test years.
+- [x] **Phase 5, models:** done as part of version 2 (GAT and nested
+  cross-validation).
 
 ## 7. Version 2 design (fixed on October 24, 2026, before any version 2 result)
 
@@ -275,4 +284,60 @@ install. Data downloads and the model run happen in GitHub Actions, which
 commits the outputs to the branch.
 
 ### Version 2 log
-- October 24, 2026: design fixed (this section).
+- October 24, 2026: design fixed (this section, commit `11940e6`).
+- October 24, 2026: data built. V-Dem v16 subset 1980 to 2025; World Bank 2000
+  to 2025; GDELT 1.0, 4,727 files, 833 million rows read, 29.4 million events in
+  members (2 daily files listed by GDELT but missing on its server). No member
+  has fewer than 50 GDELT events in any year (lowest: Cabo Verde 2005, 258), so
+  no GDELT share is missing.
+- October 24, 2026: first full run (GitHub Actions run 40129198200). No bug
+  fixes were needed, and no design change was made after the run.
+
+### Version 2 results (2001 to 2024; 24 held-out years, 360 rows, 13 actions)
+
+| Model | AUC | Top-3 hits (of 13) |
+|---|---|---|
+| Baseline A (version 1 inputs) | 0.732 | 6 |
+| Baseline B (version 1 inputs) | 0.680 | 6 |
+| Baseline C (version 1 inputs) | 0.747 | 8 |
+| Baseline C v2 | 0.778 | 7 |
+| GNN v2 | 0.616 | 7 |
+| GNN v2, all links removed | 0.734 | 8 |
+
+- Bootstrap (GNN v2 minus Baseline C v2): [-0.349, 0.001]; GNN ahead in 2.6%
+  of resamples. AUC intervals: Baseline C v2 [0.589, 0.923], GNN v2
+  [0.388, 0.766].
+- Decision rule: **Baseline C v2 is the main model.** The watch list
+  (`results/risk_next12_v2.csv`) and the risk map use it.
+- Tuning: Baseline C v2 chose C = 0.01 in all 24 folds. GNN v2 chose GAT in 20
+  of 24 folds and the WAEMU links in 17.
+- Diagnosis: within a year the GNN ranks about as well as Baseline C v2 (7 of
+  13 top-3 hits each), but its scores change scale between held-out years (the
+  highest score in a year ranges from 0.000 to 1.000; median score 0.002),
+  which is overfitting with 11 inputs and 13 actions. Pooled AUC penalizes this.
+- The link ablation reversed: in version 1 removing links lowered the GNN's
+  AUC (0.74 to 0.66); in version 2 removing them raised it (0.62 to 0.73).
+- 2025 check: GNN v2 ranked Guinea-Bissau 3rd (Baseline C v2: 12th) and Benin
+  11th (Baseline C v2: 6th).
+- 2026 watch list (Baseline C v2): Guinea-Bissau 85 (Elevated), Guinea 74
+  (Elevated), Benin 53. Scores are narrower than in version 1 because of the
+  strong penalty (C = 0.01).
+- Economic impact: 11 of 13 actions trail the region; median about -10 points;
+  Niger 2023 -29; coastal median -15, landlocked -4. Coups: 8 of 12
+  successful-coup years drew action, 0 of 8 failed-only years.
+
+**Checks of the result**
+- Reproducible: a second full run on a different machine (cloud workspace,
+  different PyTorch build) gave identical settings, scores, bootstrap, and
+  decision.
+- Not a code bug: the version 2 code run with the version 1 setup (2010 to
+  2024, 3 node features, GraphSAGE, borders) gives GNN 0.743 (5 top-3 hits) and
+  0.663 without links (4), the version 1 results. The drop comes from the
+  design.
+
+**Framing for version 2.** Report the result as it is: Baseline C v2 is the
+best model; GNN v2 did not beat it; the GNN's strengths are its within-year
+ranking and the Guinea-Bissau 2025 case. Any later model change (for example
+tuning epochs or weight decay to reduce the overfitting) is a new version with
+its own design written first, and it has to be read knowing that the 2001 to
+2024 years have now been seen; new years (2025 onward) are the clean test.
