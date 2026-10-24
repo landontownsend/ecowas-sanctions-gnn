@@ -1,5 +1,6 @@
 """
 Run the whole pipeline: ingest -> transform -> checks -> export.
+Export writes two files: the study-period features and the forecast-year inputs.
 
 From the repository root:
   python -m pipeline.run          # uses the saved World Bank snapshot (reproducible)
@@ -14,11 +15,11 @@ import duckdb
 from pipeline.checks import run_checks
 from pipeline.config import load_config
 from pipeline.ingest import ingest
-from pipeline.transform import features_table, transform
+from pipeline.transform import features_table, forecast_table, transform
 
 
 def export(df, path):
-    """Write the feature table to CSV for the model scripts, rounded to 3 decimals."""
+    """Write a feature table to CSV for the model scripts, rounded to 3 decimals."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     df.round(3).to_csv(path, index=False)
 
@@ -43,6 +44,10 @@ def run(live=False, config_path="config.yaml"):
         export(df, cfg["paths"]["features_csv"])
         print(f"   Saved {len(df)} rows and {len(df.columns)} columns to "
               f"{cfg['paths']['features_csv']}")
+        fc = forecast_table(con)
+        export(fc, cfg["paths"]["forecast_csv"])
+        print(f"   Saved {len(fc)} rows and {len(fc.columns)} columns to "
+              f"{cfg['paths']['forecast_csv']}")
     return df
 
 

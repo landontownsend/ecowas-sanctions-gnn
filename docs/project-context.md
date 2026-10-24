@@ -3,7 +3,8 @@
 This file records the state of the project, the decisions behind it, and the
 plan for the next phases. Read it first before starting new work.
 
-Last updated: October 22, 2026, after Phase 1 was merged (commit `0996ff9`).
+Last updated: October 24, 2026, cleanup before Phase 2 (branch
+`cleanup-before-phase-2`).
 
 ## 1. What the project is
 
@@ -86,7 +87,7 @@ config.yaml        every setting: years, members, borders, sources, paths, model
 pipeline/          ingest.py, transform.py, checks.py, run.py, config.py
 sql/               staging.sql, features.sql (DuckDB SQL models)
 src/               analysis.py (baselines), gnn.py, charts.py, gnn_chart.py
-tests/             pytest: 18 tests + 1 live World Bank API test
+tests/             pytest: 26 tests + 1 live World Bank API test
 scripts/           check_reproducible.py (compares outputs with committed files)
 .github/workflows/ ci.yml: test, live-api (non-blocking), docker
 Dockerfile, run_all.sh, requirements.txt, requirements-pipeline.txt
@@ -94,11 +95,35 @@ Dockerfile, run_all.sh, requirements.txt, requirements-pipeline.txt
 
 - Pipeline: ingest (World Bank API with `--live`, or the saved snapshot by
   default; V-Dem release subset; events; reference data from config) into
-  DuckDB `raw`, then SQL `staging` and `features`, then 13 data quality checks,
-  then export to `data/processed/ecowas_country_year.csv`.
+  DuckDB `raw`, then SQL `staging` and `features`, then 16 data quality checks,
+  then export to `data/processed/ecowas_country_year.csv` (study period) and
+  `data/processed/ecowas_forecast_inputs.csv` (the years after it).
+- Every model input is built once, in `sql/features.sql`, including the border
+  features (`border_military_max_lag1`, `border_coups_prev3`) and the GNN's
+  `coups_successful_prev3`. `src/analysis.py` and `src/gnn.py` only read the two
+  CSV files; they no longer read the V-Dem file or rebuild features.
+- Years live in `config.yaml`: `start`, `end` (study period), `check` (2025),
+  `forecast` (2026). The watch list tiers, suspended members, and context notes
+  are under `watch_list`. Output names that carry a year (for example
+  `oos_2025.csv`) are built from these settings.
 - The pipeline rebuilds the processed CSV byte for byte, and all results
   reproduce exactly. CI checks this on every push.
 - `src/build_dataset.py` was replaced by the pipeline and removed.
+
+**Cleanup before Phase 2 (October 24, 2026).** No model result changed. Checked
+by comparing every output with the previous commit: all model inputs, the GNN
+input arrays (all 17 years), the results files, and the figures are identical.
+Two intended changes:
+- `data/processed/ecowas_country_year.csv` has three new columns (the border
+  features and `coups_successful_prev3`); the 25 old columns are unchanged.
+- `results/summary.json`: the watch list tiers now use the same rule as
+  `risk_next12.csv` and the risk map (High 0.85 or more, Elevated 0.70 or more,
+  "Left ECOWAS" for Mali, Burkina Faso, and Niger). Before, `summary.json` used
+  a second rule (cut points 0.25 and 0.5) and called the exited members "High".
+- The GNN was not rerun in the cloud workspace (PyTorch could not be
+  installed there). Its inputs were checked to be identical, so its results
+  should not change; rerun `python src/gnn.py` and
+  `python scripts/check_reproducible.py` locally to confirm.
 
 Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
 `python src/gnn.py` (about 8 minutes on CPU), `pytest`, or `./run_all.sh`.

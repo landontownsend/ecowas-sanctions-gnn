@@ -22,6 +22,12 @@ def test_missing_country_year_is_caught(con, cfg):
         run_checks(con, cfg, verbose=False)
 
 
+def test_missing_forecast_row_is_caught(con, cfg):
+    con.execute("DELETE FROM features.forecast_inputs WHERE iso3 = 'BEN' AND year = 2026")
+    with pytest.raises(DataQualityError, match="Forecast inputs have all"):
+        run_checks(con, cfg, verbose=False)
+
+
 def test_one_way_border_is_caught(con, cfg):
     con.execute("DELETE FROM raw.borders WHERE iso3 = 'GMB' AND neighbor = 'SEN'")
     with pytest.raises(DataQualityError, match="two-way"):

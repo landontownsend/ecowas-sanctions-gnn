@@ -3,14 +3,15 @@ gnn.py
 ECOWAS sanctions risk: Stage 2 forecast (graph neural network)
 
 Run from the repository root after analysis.py:  python src/gnn.py
-Reads:  data/processed/ecowas_country_year.csv
-        data/raw/vdem_ecowas_subset.csv
+Reads:  data/processed/ecowas_country_year.csv   (study period, from the pipeline)
+        data/processed/ecowas_forecast_inputs.csv (years after it, from the pipeline)
 Writes: results/gnn_*.csv and results/gnn_summary.json
 
 Design (fixed before looking at any held-out result)
   * One graph per year. Nodes: the 15 ECOWAS members. Edges: shared land borders.
-  * Node features, all from the prior year: military rule index, successful
-    coups, and the country's own successful coups over the previous three years.
+  * Node features, all from the pipeline and all from before the year: last
+    year's military rule index, last year's successful coups, and the country's
+    own successful coups over the previous three years.
     Unlike Baseline C, the network receives NO hand-built neighbor summaries;
     it must learn how to combine neighbors' features itself.
   * Model (settings in config.yaml): 2-layer GraphSAGE (hidden 16, ReLU, dropout 0.2), linear
@@ -45,7 +46,6 @@ G = CFG["models"]["gnn"]
 B = CFG["models"]["bootstrap"]
 torch.set_num_threads(G["threads"])
 
-DATA = "data"
 OUT = CFG["paths"]["results"]
 os.makedirs(OUT, exist_ok=True)
 
@@ -64,30 +64,29 @@ IDX = {c: i for i, c in enumerate(NODES)}
 EDGES = torch.tensor([[IDX[a], IDX[b]] for a in NODES for b in BORDERS[a]], dtype=torch.long).t()
 NO_EDGES = torch.empty((2, 0), dtype=torch.long)
 
+# Every input was built by the pipeline (sql/features.sql). Stack the study
+# period and the forecast years into one table of inputs.
 df = pd.read_csv(CFG["paths"]["features_csv"])
-vdem = pd.read_csv(CFG["sources"]["vdem"]["file"])
-vdem = vdem.rename(columns={"country_text_id": "iso3", "e_pt_coup": "coups",
-                            "v2x_ex_military": "military"})
-vdem["coups"] = vdem["coups"].fillna(0)   # blank 2025 coup counts mean no coup
-v = vdem.set_index(["iso3", "year"])
+forecast = pd.read_csv(CFG["paths"]["forecast_csv"])
+inputs = pd.concat([df, forecast], ignore_index=True)
+
+# Node features: the country's OWN conditions only, all from before the year
+NODE_COLS = ["military_rule_index_lag1", "coups_successful_lag1", "coups_successful_prev3"]
+# Baseline C inputs, for the paired comparison
+BASELINE_C_COLS = ["military_rule_index_lag1", "coups_successful_lag1",
+                   "border_military_max_lag1", "border_coups_prev3"]
 
 
-def coups(iso, y):
-    return float(v.loc[(iso, y), "coups"]) if (iso, y) in v.index else 0.0
+def year_table(year, cols):
+    """One row per member for one year, in NODES order (15 rows), as a numpy array."""
+    rows = inputs[inputs.year == year].set_index("iso3").loc[NODES]
+    return rows[cols].to_numpy(dtype=float)
 
 
-def node_features(year):
-    """Prior-year features for every member, in NODES order (15 x 3)."""
-    rows = []
-    for iso in NODES:
-        rows.append([float(v.loc[(iso, year - 1), "military"]),
-                     coups(iso, year - 1),
-                     sum(coups(iso, y) for y in range(year - 3, year))])
-    return np.array(rows)
-
-
-YEARS = list(range(2010, 2025))
-X = {y: node_features(y) for y in YEARS + [2025, 2026]}
+YEARS = list(range(CFG["years"]["start"], CFG["years"]["end"] + 1))   # 2010 to 2024
+CHECK = CFG["years"]["check"]          # 2025: the out-of-sample check year
+FORECAST = CFG["years"]["forecast"]    # 2026: the watch list year
+X = {y: year_table(y, NODE_COLS) for y in YEARS + [CHECK, FORECAST]}
 Y = {y: np.array([int(df[(df.iso3 == iso) & (df.year == y)].ecowas_action.iloc[0])
                   for iso in NODES]) for y in YEARS}
 
@@ -141,21 +140,11 @@ def fit_predict(train_years, test_graphs, use_edges=True):
     return preds
 
 # =============================================================================
-# SECTION 3: BASELINE C, RECOMPUTED ROW BY ROW FOR THE PAIRED COMPARISON
-# (identical specification to analysis.py)
+# SECTION 3: BASELINE C, REFIT HERE FOR THE PAIRED COMPARISON
+# (identical specification and inputs to analysis.py)
 # =============================================================================
 
-def baseline_c_features(year):
-    rows = []
-    for iso in NODES:
-        nb = BORDERS[iso]
-        rows.append([float(v.loc[(iso, year - 1), "military"]), coups(iso, year - 1),
-                     max([float(v.loc[(n, year - 1), "military"]) for n in nb], default=0.0),
-                     sum(coups(n, y) for n in nb for y in range(year - 3, year))])
-    return np.array(rows)
-
-
-XC = {y: baseline_c_features(y) for y in YEARS}
+XC = {y: year_table(y, BASELINE_C_COLS) for y in YEARS}
 
 
 def baseline_c_predict(train_years, test_year):
@@ -224,23 +213,26 @@ pd.DataFrame(acts).to_csv(f"{OUT}/gnn_action_ranks.csv", index=False)
 summary["action_ranks"] = acts
 
 # =============================================================================
-# SECTION 5: 2025 OUT-OF-SAMPLE CHECK AND CURRENT SCORES (train on 2010-2024)
+# SECTION 5: OUT-OF-SAMPLE CHECK AND CURRENT SCORES (train on the study period)
+# Column and file names carry the years, for example gnn_2025 and gnn_2026.
 # =============================================================================
 
-p25, p26 = fit_predict(YEARS, [X[2025], X[2026]], use_edges=True)
-oos = pd.DataFrame({"iso3": NODES, "gnn_2025": p25, "gnn_2026": p26})
-oos["rank_2025"] = oos.gnn_2025.rank(ascending=False, method="first").astype(int)
+p_check, p_now = fit_predict(YEARS, [X[CHECK], X[FORECAST]], use_edges=True)
+gc, gf = f"gnn_{CHECK}", f"gnn_{FORECAST}"
+rank_c, mrank_f, score_f = f"rank_{CHECK}", f"member_rank_{FORECAST}", f"score_{FORECAST}"
+oos = pd.DataFrame({"iso3": NODES, gc: p_check, gf: p_now})
+oos[rank_c] = oos[gc].rank(ascending=False, method="first").astype(int)
 EXITED = CFG["exited_2025"]
 cur = oos[~oos.iso3.isin(EXITED)].copy()
-cur["member_rank_2026"] = cur.gnn_2026.rank(ascending=False, method="first").astype(int)
-oos = oos.merge(cur[["iso3", "member_rank_2026"]], on="iso3", how="left")
-oos["score_2026"] = (oos.gnn_2026 * 100).round(0).astype(int)
-oos.round(4).to_csv(f"{OUT}/gnn_scores_2025_2026.csv", index=False)
-summary["oos_2025"] = {"gnb_rank": int(oos[oos.iso3 == "GNB"].rank_2025.iloc[0]),
-                       "ben_rank": int(oos[oos.iso3 == "BEN"].rank_2025.iloc[0]),
-                       "top5": oos.sort_values("rank_2025").head(5)[["iso3", "gnn_2025"]].round(3).to_dict("records")}
-summary["current_members_2026"] = oos.dropna(subset=["member_rank_2026"]) \
-    .sort_values("member_rank_2026")[["iso3", "score_2026", "member_rank_2026"]].to_dict("records")
+cur[mrank_f] = cur[gf].rank(ascending=False, method="first").astype(int)
+oos = oos.merge(cur[["iso3", mrank_f]], on="iso3", how="left")
+oos[score_f] = (oos[gf] * 100).round(0).astype(int)
+oos.round(4).to_csv(f"{OUT}/gnn_scores_{CHECK}_{FORECAST}.csv", index=False)
+summary[f"oos_{CHECK}"] = {"gnb_rank": int(oos[oos.iso3 == "GNB"][rank_c].iloc[0]),
+                           "ben_rank": int(oos[oos.iso3 == "BEN"][rank_c].iloc[0]),
+                           "top5": oos.sort_values(rank_c).head(5)[["iso3", gc]].round(3).to_dict("records")}
+summary[f"current_members_{FORECAST}"] = oos.dropna(subset=[mrank_f]) \
+    .sort_values(mrank_f)[["iso3", score_f, mrank_f]].to_dict("records")
 
 with open(f"{OUT}/gnn_summary.json", "w") as f:
     json.dump(summary, f, indent=2, default=lambda o: o.item() if hasattr(o, "item") else str(o))
