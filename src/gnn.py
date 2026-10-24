@@ -11,6 +11,10 @@ Run from the repository root, after the pipeline:
   python src/gnn.py           full run (GitHub Actions: .github/workflows/run-models.yml)
   python src/gnn.py --quick   smoke test: 2 held-out years, 20 epochs, 1 seed;
                               writes to results_quick/ (used by CI)
+  python src/gnn.py --watch-list
+                              monthly refresh: if the last full run chose Baseline
+                              C v2 as the main model, refit it (seconds) and rewrite
+                              results/risk_next12_v2.csv (used by Airflow)
 Reads:  data/processed/ecowas_country_year.csv   (study period)
         data/processed/ecowas_forecast_inputs.csv (2025 and 2026)
 Writes: results/gnn_loyo_predictions.csv  held-out scores for every country-year
@@ -320,6 +324,32 @@ def top3_hits(d, col):
     return hits
 
 
+def write_watch_list(risk, model_label):
+    """Rank the members by the main model's forecast-year scores and save the watch list."""
+    scores = pd.DataFrame({"iso3": NODES, "risk": risk})
+    scores["rank"] = scores.risk.rank(ascending=False, method="first").astype(int)
+    watch = build_watch_list(scores.sort_values("rank"), CFG)
+    watch["model"] = model_label
+    watch.to_csv(f"{OUT}/risk_next12_v2.csv", index=False)
+    return watch
+
+
+def watch_list_only():
+    """
+    The monthly refresh. The last full run's decision is in gnn_summary.json.
+    If it chose Baseline C v2, refit that model on the current data and rewrite
+    the watch list. If it chose GNN v2, leave the watch list to the full run.
+    """
+    summary = json.load(open(f"{OUT}/gnn_summary.json"))
+    main_model = summary["decision"]["main_model"]
+    if main_model != "Baseline C v2":
+        print(f"The main model is {main_model}; its watch list comes from the full run.")
+        return
+    C, _ = baseline_tune(YEARS)
+    write_watch_list(baseline_fit(YEARS, C)(FORECAST), main_model)
+    print(f"Watch list rewritten with Baseline C v2 (C = {C})")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     outer_years = YEARS[-2:] if QUICK else YEARS
@@ -423,11 +453,7 @@ def main():
     summary["forecast_fit"] = {"C": fc["C"], "gnn_setting": fc["setting"]}
 
     # --- The watch list from the main model ---------------------------------------
-    scores = pd.DataFrame({"iso3": NODES, "risk": fc[main_model][str(FORECAST)]})
-    scores["rank"] = scores.risk.rank(ascending=False, method="first").astype(int)
-    watch = build_watch_list(scores.sort_values("rank"), CFG)
-    watch["model"] = summary["decision"]["main_model"]
-    watch.to_csv(f"{OUT}/risk_next12_v2.csv", index=False)
+    watch = write_watch_list(fc[main_model][str(FORECAST)], summary["decision"]["main_model"])
     summary[f"watch_list_{FORECAST}"] = watch[["iso3", "risk_score_0_100", "member_rank", "tier"]] \
         .astype(str).to_dict("records")
 
@@ -437,4 +463,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--watch-list" in sys.argv:
+        watch_list_only()
+    else:
+        main()
