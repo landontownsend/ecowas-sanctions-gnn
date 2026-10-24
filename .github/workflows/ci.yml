@@ -96,6 +96,7 @@ jobs:
             2>&1 | tee dag-run.log
           # Report the result as annotations (readable through the API) and fail if the run failed
           grep -E "ERROR|Error|Traceback" dag-run.log | head -15 | sed 's/^/::warning::/' || true
+          echo "::notice title=last lines of the DAG run::$(tail -80 dag-run.log | cut -c1-220 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
           grep -o "DagRun Finished: dag_id=ecowas_monthly.*state=[a-z_]*" dag-run.log | sed 's/^/::notice::/' || true
           grep -q "DagRun Finished: dag_id=ecowas_monthly.*state=success" dag-run.log
       - name: Check the outputs
