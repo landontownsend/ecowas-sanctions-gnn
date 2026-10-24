@@ -55,9 +55,9 @@ It builds a country-year panel of all 15 ECOWAS members (2010 to 2024), benchmar
 ```
 
 * **Ingest** (`pipeline/ingest.py`): World Bank indicators come from the World Bank API in live mode, or from the saved snapshot by default, so results are reproducible. V-Dem has no live API, so the pipeline loads a versioned release subset. Every load is recorded in `meta.load_log`.
-* **Transform** (`sql/staging.sql`, `sql/features.sql`): SQL models in DuckDB build the country-year feature table, including the lagged inputs, the region-wide coup counts, and the import damage measure.
-* **Checks** (`pipeline/checks.py`): 13 data quality checks, for example one row per member per year, a military rule index between 0 and 1, and two-way borders. The run stops if any check fails.
-* **Configuration** (`config.yaml`): years, members, the border network, data sources, paths, and every model setting are in one file.
+* **Transform** (`sql/staging.sql`, `sql/features.sql`): SQL models in DuckDB build every model input once: the lagged inputs, the region-wide and border-neighbor features, and the import damage measure. The output is two tables, the study-period panel and the inputs for the years after it (the out-of-sample check and the watch list). The model scripts only read these tables.
+* **Checks** (`pipeline/checks.py`): 16 data quality checks, for example one row per member per year, a military rule index between 0 and 1, two-way borders, and complete forecast inputs. The run stops if any check fails.
+* **Configuration** (`config.yaml`): years (study period, check year, forecast year), members, the border network, data sources, paths, watch list tiers, and every model setting are in one file.
 * **Tests and CI**: pytest covers API parsing, the SQL features, and the checks. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, and builds the Docker image.
 
 ## Repository structure
@@ -76,7 +76,8 @@ ecowas-sanctions-gnn/
 ├── scripts/                  # reproducibility check used by CI
 ├── data/
 │   ├── raw/                  # V-Dem subset, World Bank snapshot, hand-coded ECOWAS events
-│   └── processed/            # ecowas_country_year.csv (the analysis panel)
+│   └── processed/            # ecowas_country_year.csv (the analysis panel) and
+│                             # ecowas_forecast_inputs.csv (inputs for the check and forecast years)
 ├── results/                  # CSV and JSON outputs
 ├── figures/                  # PNG figures
 ├── Dockerfile

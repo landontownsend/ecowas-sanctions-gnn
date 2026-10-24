@@ -6,13 +6,22 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Study period
-# The dataset covers 2010 to 2024. The pipeline also loads 2009 so that 2010
+# Years
+# The study period is start to end: the models train and are tested on these
+# years. The pipeline also loads the year before start, so that the first year
 # has prior-year (lagged) values.
+# After the study period, the pipeline builds model inputs for every year up to
+# forecast. Each forecast year is scored from conditions in the year before.
+#   check:    out-of-sample check, scored and compared with what happened
+#   forecast: the current watch list
+# To move the watch list forward a year, raise forecast (after the V-Dem file
+# has data for the year before it).
 # -----------------------------------------------------------------------------
 years:
   start: 2010
   end: 2024
+  check: 2025
+  forecast: 2026
 
 # -----------------------------------------------------------------------------
 # The 15 ECOWAS members
@@ -89,8 +98,28 @@ sources:
 paths:
   warehouse: data/warehouse/ecowas.duckdb
   features_csv: data/processed/ecowas_country_year.csv
+  forecast_csv: data/processed/ecowas_forecast_inputs.csv
   results: results
   figures: figures
+
+# -----------------------------------------------------------------------------
+# Watch list (results/risk_next12.csv)
+# Update the suspended members and the context notes when you raise the
+# forecast year.
+# -----------------------------------------------------------------------------
+watch_list:
+  # Tiers for current members, by the model's score from 0 to 1
+  tiers:
+    high: 0.85        # score of 0.85 or more
+    elevated: 0.70    # score of 0.70 or more; anything lower is "Lower"
+  # Members suspended at the time of the forecast, and the label to show
+  suspended:
+    GNB: Suspended (Nov 2025)
+  # Short notes shown next to a member's score
+  context:
+    GNB: "Military council since Nov 2025; suspended; elections promised by Dec 6, 2026"
+    GIN: "Readmitted Jan 2026 after Doumbouya's election; model does not yet see this"
+    BEN: "Failed coup attempt Dec 7, 2025; borders Niger and Burkina Faso"
 
 # -----------------------------------------------------------------------------
 # Model settings
