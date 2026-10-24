@@ -1,0 +1,16 @@
+iso3,risk,rank,status,member_rank,tier,context,risk_score_0_100,model
+GNB,0.8480397793470545,1,Suspended (Nov 2025),1.0,Elevated,"Military council since Nov 2025; suspended; elections promised by Dec 6, 2026",85,Baseline C v2
+NER,0.8303129348206697,2,Left ECOWAS (2025),,Left ECOWAS,,83,Baseline C v2
+MLI,0.829082312116563,3,Left ECOWAS (2025),,Left ECOWAS,,83,Baseline C v2
+BFA,0.8095472059781907,4,Left ECOWAS (2025),,Left ECOWAS,,81,Baseline C v2
+GIN,0.7373558884619893,5,Member,2.0,Elevated,Readmitted Jan 2026 after Doumbouya's election; model does not yet see this,74,Baseline C v2
+BEN,0.5278286686761107,6,Member,3.0,Lower,"Failed coup attempt Dec 7, 2025; borders Niger and Burkina Faso",53,Baseline C v2
+CIV,0.4948690784236143,7,Member,4.0,Lower,,49,Baseline C v2
+NGA,0.4739526819330675,8,Member,5.0,Lower,,47,Baseline C v2
+LBR,0.4532017056883908,9,Member,6.0,Lower,,45,Baseline C v2
+TGO,0.40779225592747154,10,Member,7.0,Lower,,41,Baseline C v2
+SLE,0.36379139277222555,11,Member,8.0,Lower,,36,Baseline C v2
+SEN,0.3584277372098083,12,Member,9.0,Lower,,36,Baseline C v2
+GHA,0.3570465136278305,13,Member,10.0,Lower,,36,Baseline C v2
+GMB,0.16313713961020346,14,Member,11.0,Lower,,16,Baseline C v2
+CPV,0.1482862279422784,15,Member,12.0,Lower,,15,Baseline C v2
