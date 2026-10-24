@@ -1,6 +1,8 @@
 # Forecasting ECOWAS Sanctions Risk with Graph Neural Networks
 
-[![CI](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml/badge.svg)](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml)
+[![CI](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml/badge.svg)](https://github.com/landontownsend/ecowas-sanctions-gnn/actions/workflows/ci.yml) [![Dashboard](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ecowas-sanctions-gnn-qdsx3dzrztyzxsptrsq2gl.streamlit.app/)
+
+**Live dashboard:** [ecowas-sanctions-gnn-qdsx3dzrztyzxsptrsq2gl.streamlit.app](https://ecowas-sanctions-gnn-qdsx3dzrztyzxsptrsq2gl.streamlit.app/)
 
 When a West African government falls to a coup or stalls its return to civilian rule, the regional bloc ECOWAS often suspends it, sanctions it, or closes its borders, and those actions cut the country's imports well behind the rest of the region. This project asks whether conditions in a member state, measured the year before, can forecast that response, and whether modeling the region as a **network of linked states** improves the forecast.
 
@@ -88,7 +90,7 @@ The version 1 code and outputs are in the git history at commit `d437885`.
 
 A Streamlit app (`dashboard/app.py`) with five tabs: the watch list (an interactive risk map and table), monthly GDELT protest and violence trends for each country with ECOWAS actions and coups marked, the import change after each action, the model comparison, and the data sources.
 
-* **Online:** hosted on Streamlit Community Cloud from this repository (main file `dashboard/app.py`). It reads only committed files, so it needs no database, and the map is drawn from a bundled 91 KB file, so it needs no map service.
+* **Online:** [the live dashboard](https://ecowas-sanctions-gnn-qdsx3dzrztyzxsptrsq2gl.streamlit.app/), hosted on Streamlit Community Cloud from this repository (main file `dashboard/app.py`). It reads only committed files, so it needs no database, and the map is drawn from a bundled 91 KB file, so it needs no map service.
 * **Locally:** `pip install -r dashboard/requirements.txt` and `streamlit run dashboard/app.py`, or `docker compose up`, which starts it at http://localhost:8501 next to Airflow. There it shows the newest monthly Airflow run and the warehouse's load log.
 
 ## Orchestration (Apache Airflow 3)

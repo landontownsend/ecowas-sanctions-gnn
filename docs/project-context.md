@@ -234,6 +234,7 @@ one-minute smoke test), `pytest`, or `./run_all.sh`.
   installed there). Tests: Streamlit AppTest; CI also starts the container.
   Deploying needs the owner's Streamlit account (share.streamlit.io: repository
   `landontownsend/ecowas-sanctions-gnn`, branch `main`, file `dashboard/app.py`).
+  Live since October 24, 2026: https://ecowas-sanctions-gnn-qdsx3dzrztyzxsptrsq2gl.streamlit.app/
 - [x] **Phase 5, models:** done as part of version 2 (GAT and nested
   cross-validation).
 
