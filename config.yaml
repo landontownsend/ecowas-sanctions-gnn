@@ -115,6 +115,7 @@ paths:
   features_csv: data/processed/ecowas_country_year.csv
   forecast_csv: data/processed/ecowas_forecast_inputs.csv
   results: results
+  runs: runs                  # dated copies of the watch list (Airflow publish task)
   figures: figures
 
 # -----------------------------------------------------------------------------

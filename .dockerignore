@@ -5,3 +5,6 @@
 data/warehouse
 data/external
 .DS_Store
+airflow-data
+runs
+results_quick
