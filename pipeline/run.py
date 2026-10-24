@@ -15,7 +15,7 @@ import duckdb
 from pipeline.checks import run_checks
 from pipeline.config import load_config
 from pipeline.ingest import ingest
-from pipeline.transform import features_table, forecast_table, transform
+from pipeline.transform import features_table, forecast_table, month_table, transform
 
 
 def export(df, path):
@@ -48,6 +48,10 @@ def run(live=False, config_path="config.yaml"):
         export(fc, cfg["paths"]["forecast_csv"])
         print(f"   Saved {len(fc)} rows and {len(fc.columns)} columns to "
               f"{cfg['paths']['forecast_csv']}")
+        mo = month_table(con)
+        export(mo, cfg["paths"]["monthly_csv"])
+        print(f"   Saved {len(mo)} rows and {len(mo.columns)} columns to "
+              f"{cfg['paths']['monthly_csv']}")
     return df
 
 

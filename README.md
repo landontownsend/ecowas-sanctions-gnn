@@ -79,7 +79,8 @@ The version 1 code and outputs are in the git history at commit `d437885`.
 
 * **Ingest** (`pipeline/ingest.py`): World Bank indicators come from the World Bank API in live mode, or from the saved snapshot by default, so results are reproducible. V-Dem has no live API, so the pipeline loads a versioned release subset (`scripts/make_vdem_subset.py`). GDELT is too large to download on every run, so a GitHub Actions workflow (`refresh-data.yml`) downloads and counts all event files in parallel and commits a monthly snapshot. Every load is recorded in `meta.load_log`.
 * **Transform** (`sql/staging.sql`, `sql/features.sql`): SQL models in DuckDB build every model input once: the lagged inputs, the region-wide and border-neighbor features, years since the last coup, the GDELT shares, and the import damage measure. The output is two tables, the study-period panel and the inputs for the years after it (the 2025 check and the 2026 watch list). The model scripts only read these tables.
-* **Checks** (`pipeline/checks.py`): 20 data quality checks, for example one row per member per year, a military rule index between 0 and 1, two-way borders, GDELT shares between 0 and 1, and complete forecast inputs. The run stops if any check fails.
+* **Monthly panel** (`sql/monthly.sql`): one row per member per month, 2001 to 2024 (4,320 rows), with GDELT protest and violence shares over the last 1, 3, and 6 months, the previous year's V-Dem and economic values, and the outcome for a six-month horizon (`action_next_6m`: a new ECOWAS action in any of the next 6 months, from the exact event dates). 16 action months; 87 months have an action in the following six. Exported to `data/processed/ecowas_country_month.csv`.
+* **Checks** (`pipeline/checks.py`): 23 data quality checks, for example one row per member per year and per month, a military rule index between 0 and 1, two-way borders, GDELT shares between 0 and 1, and complete forecast inputs. The run stops if any check fails.
 * **Configuration** (`config.yaml`): years, members, the border network, GDELT codes, data sources, paths, feature lists, tuning grids, watch list tiers, and every model setting are in one file.
 * **Tests and CI**: pytest covers API parsing, the SQL features, the checks, and the watch list rules. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, runs a one-minute GNN smoke test, and builds the Docker image. A second workflow (`run-models.yml`) runs the full project and commits the outputs.
 
@@ -129,6 +130,7 @@ ecowas-sanctions-gnn/
 │   ├── raw/                  # V-Dem subset, World Bank and GDELT snapshots, hand-coded ECOWAS events
 │   └── processed/            # ecowas_country_year.csv (the analysis panel) and
 │                             # ecowas_forecast_inputs.csv (inputs for the check and forecast years)
+│                             # ecowas_country_month.csv (the monthly panel)
 ├── results/                  # CSV and JSON outputs
 ├── figures/                  # PNG figures
 ├── docs/project-context.md   # design, decisions, and development log
@@ -177,7 +179,8 @@ pytest                        # tests
 * [x] **Foundation:** World Bank API ingestion, DuckDB warehouse with raw, staging, and feature layers, data quality checks, one configuration file, tests, CI, and Docker
 * [x] **Version 2:** 2001 start, GDELT events, 11 inputs, graph attention network, nested cross-validation, pre-registered design
 * [x] **Orchestration:** monthly refreshes with Apache Airflow 3, incremental GDELT updates, Docker Compose
-* [ ] **Monthly panel:** country-month features from the GDELT snapshot and a six-month forecasting horizon
+* [x] **Monthly panel:** country-month features from the GDELT snapshot and a six-month outcome
+* [ ] **Version 3 model:** a six-month forecast on the monthly panel, with its design written first
 * [ ] **Dashboard:** a Streamlit app with the risk map, the current watch list, and the import damage chart
 
 ## Data sources

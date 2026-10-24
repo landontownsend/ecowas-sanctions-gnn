@@ -92,7 +92,7 @@ src/               analysis.py (Baselines A to C), gnn.py (Baseline C v2, GNN v2
 dags/              Airflow 3 DAGs: ecowas_monthly, ecowas_models
 pipeline/tasks.py  one plain function per Airflow task
 docker/            airflow.Dockerfile; docker-compose.yaml at the root
-tests/             pytest: 36 tests + 1 live World Bank API test (+3 DAG tests
+tests/             pytest: 42 tests + 1 live World Bank API test (+3 DAG tests
                    that run when Airflow is installed)
 scripts/           check_reproducible.py, make_vdem_subset.py,
                    refresh_world_bank.py, refresh_gdelt.py
@@ -207,8 +207,21 @@ one-minute smoke test), `pytest`, or `./run_all.sh`.
   Compose: Airflow standalone + Postgres. Verified: `airflow dags test` here,
   and in CI inside the image (54 seconds; live World Bank; GDELT added
   January to September 2026 from 273 files).
-- [ ] **Phase 3, monthly panel:** the GDELT snapshot is built (version 2) and
-  is already monthly; next is a country-month panel and a six-month horizon.
+- [x] **Phase 3, monthly panel (October 24, 2026):** `sql/monthly.sql` builds
+  `features.country_month` (4,320 rows): GDELT protest and violence shares over
+  1, 3, and 6 months (missing when the window has fewer than 50 events: 91
+  one-month values, 6 three-month values), the previous year's yearly inputs,
+  `action_this_month`, and `action_next_6m` (a new action in months t+1 to t+6;
+  87 positive months, 16 action months). 3 new checks (23 in total). Exported to
+  `data/processed/ecowas_country_month.csv`. Known limits: V-Dem values for a
+  year are published in March of the next year, so using them from January is a
+  slight look-ahead of up to two months; the six-month outcome for July to
+  December 2024 looks into 2025, where only Guinea-Bissau's November 2025
+  suspension is coded (no other action is known for January to June 2025).
+- [ ] **Version 3 model:** a six-month forecast on the monthly panel. Write its
+  design first. Hold out whole years with a six-month gap on each side, because
+  neighboring months share outcome windows. The 2001 to 2024 years have been
+  seen, so judge it mainly on 2025 onward.
 - [ ] **Phase 4, dashboard:** a Streamlit app with the risk map, the live watch
   list, and the import damage chart, reading from the DuckDB warehouse.
 - [x] **Phase 5, models:** done as part of version 2 (GAT and nested
