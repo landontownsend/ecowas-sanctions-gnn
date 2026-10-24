@@ -155,7 +155,9 @@ Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
 
 - [x] **Phase 1, foundation:** config, World Bank API ingestion, DuckDB
   warehouse, data checks, tests, CI, Docker (PR #1)
-- [ ] **Phase 2, orchestration (next):** an Apache Airflow DAG that runs the
+- [ ] **Version 2 (in progress):** 2001 start, more features, GDELT, GAT,
+  nested tuning. See section 7.
+- [ ] **Phase 2, orchestration:** an Apache Airflow DAG that runs the
   pipeline monthly. Planned tasks: ingest (live) -> transform -> checks ->
   export -> baselines -> publish the dated watch list. The GNN can be a separate
   or less frequent task because it takes about 8 minutes. Run Airflow locally
@@ -171,3 +173,93 @@ Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
 - [ ] **Phase 5, models:** a graph attention network (GAT) as a second graph
   model, and nested cross-validation to tune both networks without touching the
   test years.
+
+## 7. Version 2 design (fixed on October 24, 2026, before any version 2 result)
+
+**Why.** Version 1 has 10 actions in 225 country-years, and the GNN gets only 3
+node features. Version 2 gives the GNN more action years, more information per
+country, a richer graph, and correct tuning. The aim is a fair test in which
+the GNN has a real chance to win. This design is written down before any
+version 2 model is run. After the first full run, only bug fixes are allowed,
+and each fix that changes a result is recorded below with its reason.
+
+**Data**
+- Study period 2001 to 2024 (24 years, 360 rows). ECOWAS adopted the Protocol
+  on Democracy and Good Governance in 2001; before it, ECOWAS punished almost
+  no coups, so earlier years follow different rules. Mauritania left in 2000,
+  so membership is the same 15 states for the whole period.
+- Check year 2025, forecast year 2026 (unchanged).
+- V-Dem v16, from the official `vdeminstitute/vdemdata` release (identical to
+  the version 1 subset in every overlapping value), loaded from 1980 so that
+  years since the last coup can be counted.
+- World Bank: one fresh pull for 2000 to 2025 (a single vintage for all years).
+- GDELT 1.0 event files, 2000 to 2025, counted by country and month
+  (ActionGeo country code), committed as a snapshot.
+- New hand-coded actions: Togo 2005 (suspension and sanctions, about February
+  19), Guinea 2009 (suspension January 10; arms embargo October 17), Niger 2009
+  (suspension October 20). Guinea-Bissau 2003: no suspension or sanctions found.
+  Guinea-Bissau 2025 (suspension November 27) is added for the forecast inputs
+  only; it is outside the study period.
+
+**Outcome.** Unchanged: any new ECOWAS action (suspension, sanctions, border
+closure) in year t.
+
+**Own-country features** (all from before year t; used by every version 2 model)
+1. `military_rule_index_lag1`
+2. `coups_successful_lag1`
+3. `coups_successful_prev3` (own coups in t-3 to t-1)
+4. `coups_failed_lag1`
+5. `mass_mobilization_lag1`
+6. `gdp_growth_lag1`
+7. `inflation_lag1`
+8. `ecowas_action_lag1` (an action in t-1)
+9. `years_since_coup` (years since the last successful coup, capped at 20)
+10. `gdelt_protest_share_lag1` (protest events, CAMEO root 14, as a share of
+    all events in the country in t-1)
+11. `gdelt_violence_share_lag1` (CAMEO roots 18, 19, 20, same share)
+
+GDELT shares are missing when the country has fewer than 50 events in the
+year. Missing values are filled with the median of the training rows in each
+fold. Inputs are standardized with the training rows only.
+
+**Models**
+- **Baseline C v2:** L2 logistic regression, balanced class weights, the 11
+  own-country features plus the two version 1 border summaries
+  (`border_military_max_lag1`, `border_coups_prev3`). C is tuned from
+  {0.01, 0.1, 1, 10}.
+- **GNN v2:** 2 graph layers, linear output, weighted binary cross-entropy,
+  Adam (lr 0.01, weight decay 0.005), dropout 0.2, 300 epochs. Node features:
+  the 11 own-country features only. Tuned grid (8 settings):
+  - layer type: GraphSAGE or GAT (2 attention heads, averaged)
+  - graph: borders only, or borders plus a second link type for WAEMU (the
+    CFA franc union: BEN, BFA, CIV, GNB, MLI, NER, SEN, TGO). With two link
+    types, each layer has one graph convolution per link type, and their
+    outputs are added.
+  - hidden size: 16 or 32
+- **Ablation:** GNN v2 with the chosen setting and every edge removed.
+- **Secondary:** Baselines A, B, C with their version 1 specifications, on the
+  new period.
+
+**Tuning (nested, never sees the held-out year).** In each outer fold, the 23
+training years are split into 4 inner folds (years in order, assigned in turn).
+Each setting is scored by the AUC of its pooled inner-fold predictions (GNN: 3
+seeds per inner fit). The best setting wins; ties go to the first setting in
+grid order. The final model for the fold is refit on all 23 years (GNN: 25
+seeds, averaged). For the 2025 check and the 2026 watch list, tuning uses all
+24 years.
+
+**Evaluation.** Leave one year out over 2001 to 2024. Pooled AUC and top-3 hits.
+Year-clustered bootstrap (2,000 resamples) of GNN v2 minus Baseline C v2.
+
+**Decision rule.** GNN v2 becomes the main model if its held-out AUC is higher
+than Baseline C v2's. Otherwise Baseline C v2 is the main model. The watch list
+and the risk map use the main model. The bootstrap interval, the share of
+resamples with the GNN ahead, the ablation, and every secondary result are
+reported whatever they show. Version 1 results stay in the README as version 1.
+
+**Where it runs.** The GNN needs PyTorch, which the cloud workspace cannot
+install. Data downloads and the model run happen in GitHub Actions, which
+commits the outputs to the branch.
+
+### Version 2 log
+- October 24, 2026: design fixed (this section).
