@@ -6,3 +6,4 @@ __pycache__/
 data/external/
 data/warehouse/
 data/raw/world_bank_live.csv
+results_quick/

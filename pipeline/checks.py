@@ -26,6 +26,11 @@ def build_checks(cfg):
         ("Every event type is known",
          "SELECT COUNT(*) FROM raw.ecowas_events "
          "WHERE event_type NOT IN ('suspension', 'sanctions', 'border_closure')"),
+        ("GDELT data covers every member",
+         f"SELECT {n_countries} - COUNT(DISTINCT iso3) FROM raw.gdelt"),
+        ("GDELT shares are between 0 and 1",
+         "SELECT COUNT(*) FROM staging.gdelt WHERE gdelt_protest_share < 0 "
+         "OR gdelt_protest_share > 1 OR gdelt_violence_share < 0 OR gdelt_violence_share > 1"),
         ("Every V-Dem country name matches a member",
          f"SELECT {n_countries} - COUNT(DISTINCT c.iso3) FROM raw.vdem v "
          "JOIN staging.countries c ON v.country_name = c.vdem_name"),
@@ -45,6 +50,13 @@ def build_checks(cfg):
          "SELECT COUNT(*) FROM features.country_year WHERE coups_successful IS NULL "
          "OR military_rule_index IS NULL OR coups_successful_lag1 IS NULL "
          "OR military_rule_index_lag1 IS NULL"),
+        ("No missing V-Dem inputs or ECOWAS history (these are never filled in)",
+         "SELECT COUNT(*) FROM features.country_year WHERE coups_failed_lag1 IS NULL "
+         "OR mass_mobilization_lag1 IS NULL OR ecowas_action_lag1 IS NULL "
+         "OR years_since_coup IS NULL OR coups_successful_prev3 IS NULL"),
+        ("Years since the last coup is between 1 and 20",
+         "SELECT COUNT(*) FROM features.country_year_all "
+         "WHERE years_since_coup < 1 OR years_since_coup > 20"),
         ("Military rule index is between 0 and 1",
          "SELECT COUNT(*) FROM features.country_year "
          "WHERE military_rule_index < 0 OR military_rule_index > 1"),
@@ -68,11 +80,13 @@ def build_checks(cfg):
          f"SELECT ABS(COUNT(*) - {n_countries * n_forecast_years}) "
          f"+ (SELECT COUNT(*) FROM features.forecast_inputs WHERE year <= {end} OR year > {forecast}) "
          "FROM features.forecast_inputs"),
-        ("No missing forecast inputs",
+        ("No missing forecast inputs (except economic and GDELT values, which are filled in)",
          "SELECT COUNT(*) FROM features.forecast_inputs "
          "WHERE military_rule_index_lag1 IS NULL OR coups_successful_lag1 IS NULL "
          "OR neighbor_coups_prev3 IS NULL OR border_military_max_lag1 IS NULL "
-         "OR border_coups_prev3 IS NULL OR coups_successful_prev3 IS NULL"),
+         "OR border_coups_prev3 IS NULL OR coups_successful_prev3 IS NULL "
+         "OR coups_failed_lag1 IS NULL OR mass_mobilization_lag1 IS NULL "
+         "OR ecowas_action_lag1 IS NULL OR years_since_coup IS NULL"),
     ]
 
 

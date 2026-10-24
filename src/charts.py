@@ -54,7 +54,11 @@ plt.rcParams.update({
 
 df = pd.read_csv("data/processed/ecowas_country_year.csv")
 impact = pd.read_csv("results/impact.csv")
-risk = pd.read_csv("results/risk_next12.csv")
+# The risk map uses the version 2 main model (written by gnn.py) when it exists,
+# and Baseline C's watch list otherwise
+RISK_FILE = "results/risk_next12_v2.csv" if os.path.exists("results/risk_next12_v2.csv") \
+    else "results/risk_next12.csv"
+risk = pd.read_csv(RISK_FILE)
 
 NAMES = {"BEN": "Benin", "BFA": "Burkina Faso", "CPV": "Cabo Verde", "CIV": "Côte d'Ivoire",
          "GMB": "Gambia", "GHA": "Ghana", "GIN": "Guinea", "GNB": "Guinea-Bissau",
@@ -64,12 +68,15 @@ SEV_LABEL = {1: "Suspension", 2: "Sanctions", 3: "Border closure"}
 
 # =============================================================================
 # FIGURE 1: TIMELINE OF COUPS AND ECOWAS ACTIONS (dot matrix)
-# Rows: the six countries with a coup or an action. Columns: years.
-# Blue ring = successful coup. Terracotta dot = ECOWAS action, darker = more severe.
+# Rows: every country with a successful coup or an action, most actions first.
+# Columns: years. Blue ring = successful coup. Terracotta dot = ECOWAS action,
+# darker = more severe.
 # =============================================================================
 
-rows = ["MLI", "GIN", "BFA", "NER", "GNB", "CIV"]
-fig, ax = plt.subplots(figsize=(16, 6.6), dpi=150)
+counts = df.groupby("iso3").agg(actions=("ecowas_action", "sum"), coups=("coups_successful", "sum"))
+counts = counts[(counts.actions > 0) | (counts.coups > 0)]
+rows = list(counts.sort_values(["actions", "coups"], ascending=False).index)
+fig, ax = plt.subplots(figsize=(16, 1.5 + 0.85 * len(rows)), dpi=150)
 years = list(range(START, END + 1))
 for i, iso in enumerate(rows):
     y = len(rows) - 1 - i
@@ -110,8 +117,10 @@ plt.close(fig)
 # FIGURE 2: IMPORT CHANGE VS. UNAFFECTED NEIGHBORS (diverging bars from zero)
 # =============================================================================
 
-imp = impact.sort_values("excess_import_change", ascending=True).reset_index(drop=True)
-fig, ax = plt.subplots(figsize=(15, 7.4), dpi=150)
+# Actions with no import data (World Bank gaps) cannot be shown
+imp = impact.dropna(subset=["excess_import_change"])
+imp = imp.sort_values("excess_import_change", ascending=True).reset_index(drop=True)
+fig, ax = plt.subplots(figsize=(15, 1.4 + 0.6 * len(imp)), dpi=150)
 labels = [f"{NAMES[r.iso3]} {r.year}" for r in imp.itertuples()]
 vals = imp.excess_import_change.values
 colors = [ACCENT if v < 0 else MUTED for v in vals]
@@ -126,7 +135,7 @@ for y, v, r in zip(ypos, vals, imp.itertuples()):
 ax.axvline(0, color=INK, lw=1.5, zorder=3)
 ax.set_yticks(ypos)
 ax.set_yticklabels(labels, fontsize=21, color=INK)
-ax.set_xlim(-36, 16)
+ax.set_xlim(min(-36, vals.min() - 8), max(16, vals.max() + 8))
 ax.xaxis.grid(True, color=GRID, lw=1, zorder=0)
 ax.set_xlabel("Import change vs. members with no action that year (percentage points)",
               fontsize=19, color=BODY, labelpad=12)

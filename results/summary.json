@@ -1,63 +1,63 @@
 {
-  "n_rows": 225,
-  "n_action_years": 10,
+  "n_rows": 360,
+  "n_action_years": 13,
   "actions_2020_2023": 7,
-  "successful_coup_years": 9,
-  "successful_coup_years_with_action": 7,
-  "failed_only_years": 5,
+  "successful_coup_years": 12,
+  "successful_coup_years_with_action": 8,
+  "failed_only_years": 8,
   "failed_only_years_with_action": 0,
-  "actions_without_coup": 3,
-  "impact_median_excess_all_actions": -11.3,
+  "actions_without_coup": 5,
+  "impact_median_excess_all_actions": -9.9,
   "impact_median_excess_closures": -8.6,
   "impact_niger_2023": -28.9,
-  "impact_actions_below_region": 9,
-  "impact_corr_exposure": -0.11,
-  "gdp_growth_action_years": 2.35,
-  "gdp_growth_other_years": 4.69,
+  "impact_actions_below_region": 11,
+  "impact_corr_exposure": -0.06,
+  "gdp_growth_action_years": 1.51,
+  "gdp_growth_other_years": 4.53,
   "model_comparison": [
     {
       "model": "Own conditions only",
-      "auc": 0.761,
-      "top3_hits": 5,
-      "actions": 10
+      "auc": 0.732,
+      "top3_hits": 6,
+      "actions": 13
     },
     {
       "model": "Own + region-wide coups",
-      "auc": 0.705,
-      "top3_hits": 5,
-      "actions": 10
+      "auc": 0.68,
+      "top3_hits": 6,
+      "actions": 13
     },
     {
       "model": "Own + border neighbors (network)",
-      "auc": 0.78,
-      "top3_hits": 6,
-      "actions": 10
+      "auc": 0.747,
+      "top3_hits": 8,
+      "actions": 13
     }
   ],
   "oos_2025_top5": [
     {
-      "iso3": "MLI",
-      "risk": 0.985,
+      "iso3": "GIN",
+      "risk": 0.978,
       "rank": 1
     },
     {
       "iso3": "BFA",
-      "risk": 0.984,
+      "risk": 0.977,
       "rank": 2
     },
     {
-      "iso3": "GIN",
-      "risk": 0.983,
+      "iso3": "MLI",
+      "risk": 0.972,
       "rank": 3
     },
     {
       "iso3": "NER",
-      "risk": 0.975,
+      "risk": 0.963,
       "rank": 4
     },
     {
       "iso3": "CIV",
-      "risk": 0.749,
+      "risk": 0.754,
       "rank": 5
     }
   ],
@@ -65,106 +65,106 @@
   "oos_2025_ben_rank": 7,
   "risk_next12": [
     {
+      "iso3": "GNB",
+      "risk": "0.988",
+      "member_rank": "1.0",
+      "status": "Suspended (Nov 2025)",
+      "tier": "High"
+    },
+    {
       "iso3": "NER",
-      "risk": "0.989",
+      "risk": "0.985",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
       "tier": "Left ECOWAS"
     },
     {
       "iso3": "GIN",
-      "risk": "0.989",
-      "member_rank": "1.0",
+      "risk": "0.983",
+      "member_rank": "2.0",
       "status": "Member",
       "tier": "High"
     },
     {
       "iso3": "MLI",
-      "risk": "0.989",
+      "risk": "0.983",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
       "tier": "Left ECOWAS"
     },
     {
-      "iso3": "GNB",
-      "risk": "0.982",
-      "member_rank": "2.0",
-      "status": "Suspended (Nov 2025)",
-      "tier": "High"
-    },
-    {
       "iso3": "BFA",
-      "risk": "0.982",
+      "risk": "0.975",
       "member_rank": NaN,
       "status": "Left ECOWAS (2025)",
       "tier": "Left ECOWAS"
     },
     {
       "iso3": "BEN",
-      "risk": "0.894",
+      "risk": "0.89",
       "member_rank": "3.0",
       "status": "Member",
       "tier": "High"
     },
     {
       "iso3": "CIV",
-      "risk": "0.802",
+      "risk": "0.829",
       "member_rank": "4.0",
       "status": "Member",
       "tier": "Elevated"
     },
     {
       "iso3": "LBR",
-      "risk": "0.802",
+      "risk": "0.829",
       "member_rank": "5.0",
       "status": "Member",
       "tier": "Elevated"
     },
     {
       "iso3": "NGA",
-      "risk": "0.779",
+      "risk": "0.795",
       "member_rank": "6.0",
       "status": "Member",
       "tier": "Elevated"
     },
     {
       "iso3": "SLE",
-      "risk": "0.734",
+      "risk": "0.778",
       "member_rank": "7.0",
       "status": "Member",
       "tier": "Elevated"
     },
     {
       "iso3": "TGO",
-      "risk": "0.719",
+      "risk": "0.757",
       "member_rank": "8.0",
       "status": "Member",
       "tier": "Elevated"
     },
     {
       "iso3": "SEN",
-      "risk": "0.567",
+      "risk": "0.63",
       "member_rank": "9.0",
       "status": "Member",
       "tier": "Lower"
     },
     {
       "iso3": "GHA",
-      "risk": "0.501",
+      "risk": "0.588",
       "member_rank": "10.0",
       "status": "Member",
       "tier": "Lower"
     },
     {
       "iso3": "GMB",
-      "risk": "0.095",
+      "risk": "0.123",
       "member_rank": "11.0",
       "status": "Member",
       "tier": "Lower"
     },
     {
       "iso3": "CPV",
-      "risk": "0.038",
+      "risk": "0.056",
       "member_rank": "12.0",
       "status": "Member",
       "tier": "Lower"
@@ -173,21 +173,21 @@
   "held_out_2024_junta_scores": [
     {
       "iso3": "BFA",
-      "pred_network": 0.999
+      "pred_network": 0.995
     },
     {
       "iso3": "GIN",
-      "pred_network": 0.998
+      "pred_network": 0.993
     },
     {
       "iso3": "MLI",
-      "pred_network": 0.999
+      "pred_network": 0.994
     },
     {
       "iso3": "NER",
-      "pred_network": 0.993
+      "pred_network": 0.991
     }
   ],
-  "impact_median_excess_landlocked": -4.5,
-  "impact_median_excess_coastal": -18.3
+  "impact_median_excess_landlocked": -4.4,
+  "impact_median_excess_coastal": -14.8
 }

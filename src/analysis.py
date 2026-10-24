@@ -26,6 +26,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
+from watchlist import build_watch_list   # src/watchlist.py
+
 # Every setting comes from config.yaml in the repository root
 CFG = yaml.safe_load(open("config.yaml"))
 BASE = CFG["models"]["baseline"]
@@ -215,40 +217,11 @@ summary[f"oos_{CHECK}_ben_rank"] = int(oos[oos.iso3 == "BEN"]["rank"].iloc[0])
 # Train on the study period and score the forecast year (2026) using the year
 # before (2025). Mali, Burkina Faso and Niger are scored but flagged, since
 # they are no longer members and cannot be suspended by ECOWAS.
-# The tiers, suspended members, and context notes come from config.yaml.
+# The tiers, suspended members, and context notes come from config.yaml
+# (see src/watchlist.py).
 # =============================================================================
 
-WATCH = CFG["watch_list"]
-
-
-def member_status(iso3):
-    """Left ECOWAS, suspended, or a member in good standing."""
-    if iso3 in EXITED_2025:
-        return "Left ECOWAS (2025)"
-    if iso3 in WATCH["suspended"]:
-        return WATCH["suspended"][iso3]
-    return "Member"
-
-
-def tier(risk, status):
-    """One tier rule, used by risk_next12.csv, summary.json, and the risk map."""
-    if status == "Left ECOWAS (2025)":
-        return "Left ECOWAS"
-    if risk >= WATCH["tiers"]["high"]:
-        return "High"
-    if risk >= WATCH["tiers"]["elevated"]:
-        return "Elevated"
-    return "Lower"
-
-
-now = score_year(FORECAST, NETWORK, sc_n, m_n)
-now["status"] = [member_status(iso) for iso in now.iso3]
-members = now[now.status != "Left ECOWAS (2025)"].copy()
-members["member_rank"] = members["risk"].rank(ascending=False, method="first").astype(int)
-now = now.merge(members[["iso3", "member_rank"]], on="iso3", how="left")
-now["tier"] = [tier(r, st) for r, st in zip(now.risk, now.status)]
-now["context"] = now.iso3.map(WATCH["context"]).fillna("")
-now["risk_score_0_100"] = (now.risk * 100).round(0).astype(int)
+now = build_watch_list(score_year(FORECAST, NETWORK, sc_n, m_n), CFG)
 now.to_csv(f"{OUT}/risk_next12.csv", index=False)
 summary["risk_next12"] = now[["iso3", "risk", "member_rank", "status", "tier"]] \
     .round(3).astype(str).to_dict("records")
