@@ -28,7 +28,7 @@ default_args = {"retries": 2, "retry_delay": timedelta(minutes=5)}   # for netwo
 @dag(
     dag_id="ecowas_monthly",
     schedule="0 6 2 * *",          # 06:00 UTC on the 2nd of each month (last month is complete)
-    start_date=pendulum.datetime(2026, 11, 1, tz="UTC"),
+    start_date=pendulum.datetime(2026, 10, 1, tz="UTC"),   # in the past, so manual runs work now
     catchup=False,                 # do not run the months before the first start
     max_active_runs=1,             # one run at a time, so one writer for DuckDB
     default_args=default_args,
@@ -71,8 +71,9 @@ def ecowas_monthly():
 
     @task
     def publish():
-        run_date = get_current_context()["ds"]     # the run's date, for example "2026-11-02"
-        return tasks.publish(run_date)
+        # The run's date, for example "2026-11-02". A manual run in Airflow 3 can
+        # have no logical date; then publish uses today's date.
+        return tasks.publish(get_current_context().get("ds"))
 
     update_gdelt() >> ingest() >> transform() >> checks() >> export() >> baselines() >> watch_list() >> publish()
 
