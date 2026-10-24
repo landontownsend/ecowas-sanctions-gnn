@@ -64,6 +64,32 @@ FROM raw.vdem AS v
 JOIN staging.countries AS c
   ON v.country_name = c.vdem_name;
 
+-- GDELT events, added up from months to years.
+-- The shares are missing when the country has fewer than {gdelt_min_events}
+-- events in the year, because a share of a handful of events is mostly noise.
+--   gdelt_protest_share    protest events (CAMEO root 14) / all events
+--   gdelt_violence_share   assault, fight, mass violence (roots 18-20) / all events
+CREATE OR REPLACE TABLE staging.gdelt AS
+WITH yearly AS (
+    SELECT
+        iso3,
+        CAST(year AS INTEGER) AS year,
+        SUM(events_total)    AS gdelt_events,
+        SUM(events_protest)  AS gdelt_protest_events,
+        SUM(events_violence) AS gdelt_violence_events
+    FROM raw.gdelt
+    GROUP BY iso3, year
+)
+SELECT
+    iso3,
+    year,
+    gdelt_events,
+    CASE WHEN gdelt_events >= {gdelt_min_events}
+         THEN gdelt_protest_events / gdelt_events END  AS gdelt_protest_share,
+    CASE WHEN gdelt_events >= {gdelt_min_events}
+         THEN gdelt_violence_events / gdelt_events END AS gdelt_violence_share
+FROM yearly;
+
 -- World Bank indicators, one column per indicator
 CREATE OR REPLACE TABLE staging.world_bank AS
 SELECT

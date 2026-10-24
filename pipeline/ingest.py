@@ -8,6 +8,7 @@ Raw tables
   raw.world_bank      World Bank indicators (API or saved snapshot)
   raw.vdem            V-Dem release subset (coups, military rule, mobilization)
   raw.ecowas_events   hand-coded ECOWAS actions
+  raw.gdelt           GDELT event counts by member and month (saved snapshot)
   raw.countries       the 15 members, from config.yaml
   raw.borders         the border network, from config.yaml
 Every load is recorded in meta.load_log.
@@ -121,6 +122,11 @@ def ingest(con, cfg, live=False):
     # Hand-coded ECOWAS actions
     events_file = cfg["sources"]["ecowas_events"]["file"]
     _write(con, "raw.ecowas_events", pd.read_csv(events_file), events_file)
+
+    # GDELT: event counts by member and month. The snapshot is rebuilt by
+    # scripts/refresh_gdelt.py, because the full download is tens of gigabytes.
+    gdelt_file = cfg["sources"]["gdelt"]["snapshot"]
+    _write(con, "raw.gdelt", pd.read_csv(gdelt_file), gdelt_file)
 
     # Reference data from config.yaml
     _write(con, "raw.countries", pd.DataFrame(cfg["countries"]), "config.yaml")

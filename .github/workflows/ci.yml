@@ -47,6 +47,21 @@ jobs:
       - name: Pipeline with live World Bank data
         run: python -m pipeline.run --live
 
+  # The graph neural network runs end to end with tiny settings (about 1 minute)
+  gnn-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (CPU-only PyTorch first)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - run: python -m pipeline.run
+      - run: python src/gnn.py --quick
+
   # The Docker image builds and runs the pipeline and baselines
   docker:
     runs-on: ubuntu-latest

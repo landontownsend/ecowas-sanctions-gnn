@@ -13,7 +13,8 @@ def transform(con, cfg):
     """Run each SQL file. Year settings are filled in from config.yaml."""
     settings = {"start_year": cfg["years"]["start"],
                 "end_year": cfg["years"]["end"],
-                "forecast_year": cfg["years"]["forecast"]}
+                "forecast_year": cfg["years"]["forecast"],
+                "gdelt_min_events": cfg["sources"]["gdelt"]["min_events"]}
     for name in MODELS:
         sql = (SQL_DIR / name).read_text().format(**settings)
         con.execute(sql)

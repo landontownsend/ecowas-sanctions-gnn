@@ -38,8 +38,29 @@ def test_lagged_values_are_last_years_values(con):
     assert row(df, "MLI", 2021).military_rule_index_lag1 == row(df, "MLI", 2020).military_rule_index
 
 
-def test_ten_actions_in_the_study_period(con):
-    assert features_table(con).ecowas_action.sum() == 10
+def test_thirteen_actions_in_the_study_period(con):
+    # 10 actions from 2010 to 2024, plus Togo 2005, Guinea 2009, and Niger 2009
+    assert features_table(con).ecowas_action.sum() == 13
+
+
+def test_years_since_coup(con):
+    df = features_table(con)
+    assert row(df, "GIN", 2009).years_since_coup == 1     # coup in December 2008
+    assert row(df, "TGO", 2006).years_since_coup == 1     # coup in 2005
+    assert row(df, "NER", 2010).years_since_coup == 11    # last coup before 2010: 1999
+    assert row(df, "SEN", 2015).years_since_coup == 20    # no coup: the cap
+
+
+def test_last_years_action(con):
+    df = features_table(con)
+    assert row(df, "MLI", 2013).ecowas_action_lag1 == 1   # action in 2012
+    assert row(df, "SEN", 2013).ecowas_action_lag1 == 0
+
+
+def test_guinea_bissau_2025_suspension_reaches_the_2026_inputs(con):
+    fc = forecast_table(con)
+    assert row(fc, "GNB", 2026).ecowas_action_lag1 == 1
+    assert row(fc, "GNB", 2026).years_since_coup == 1
 
 
 def test_border_features_for_niger_2023(con):
