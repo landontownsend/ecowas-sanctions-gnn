@@ -79,11 +79,12 @@ def checks():
 def export():
     """Step 4: write the feature tables to data/processed/ for the model scripts."""
     from pipeline.run import export as write_csv
-    from pipeline.transform import features_table, forecast_table
+    from pipeline.transform import features_table, forecast_table, month_table
     cfg = _setup()
     with _connect(cfg) as con:
         write_csv(features_table(con), cfg["paths"]["features_csv"])
         write_csv(forecast_table(con), cfg["paths"]["forecast_csv"])
+        write_csv(month_table(con), cfg["paths"]["monthly_csv"])
 
 
 def baselines():

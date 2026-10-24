@@ -75,6 +75,20 @@ def build_checks(cfg):
          "WHERE border_military_max_lag1 IS NULL OR border_coups_prev3 IS NULL "
          "OR border_military_max_lag1 < 0 OR border_military_max_lag1 > 1"),
 
+        # --- country-month panel ----------------------------------------------
+        (f"Monthly panel has one row per member per month ({n_countries * n_years * 12} rows)",
+         f"SELECT ABS(COUNT(*) - {n_countries * n_years * 12}) "
+         "+ (COUNT(*) - COUNT(DISTINCT (iso3, year, month))) FROM features.country_month"),
+        ("Monthly GDELT shares are between 0 and 1",
+         "SELECT COUNT(*) FROM features.country_month WHERE "
+         "gdelt_protest_share_1m NOT BETWEEN 0 AND 1 OR gdelt_protest_share_3m NOT BETWEEN 0 AND 1 "
+         "OR gdelt_protest_share_6m NOT BETWEEN 0 AND 1 OR gdelt_violence_share_1m NOT BETWEEN 0 AND 1 "
+         "OR gdelt_violence_share_3m NOT BETWEEN 0 AND 1 OR gdelt_violence_share_6m NOT BETWEEN 0 AND 1"),
+        ("Every action month in the study period appears in the monthly panel",
+         f"SELECT (SELECT COUNT(DISTINCT (iso3, strftime(CAST(event_date AS DATE), '%Y-%m'))) "
+         f"FROM raw.ecowas_events WHERE year(CAST(event_date AS DATE)) BETWEEN {start} AND {end}) "
+         "- (SELECT SUM(action_this_month) FROM features.country_month)"),
+
         # --- forecast inputs --------------------------------------------------
         (f"Forecast inputs have all {n_countries} members for each year from {end + 1} to {forecast}",
          f"SELECT ABS(COUNT(*) - {n_countries * n_forecast_years}) "
