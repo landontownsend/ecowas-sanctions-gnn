@@ -1,211 +1,370 @@
 {
+  "design": "docs/project-context.md, section 7",
+  "years": [
+    2001,
+    2024
+  ],
+  "held_out_years": 24,
+  "actions": 13,
   "settings": {
-    "seeds": 25,
+    "grid": [
+      {
+        "layer": "sage",
+        "graph": "borders",
+        "hidden": 16
+      },
+      {
+        "layer": "sage",
+        "graph": "borders",
+        "hidden": 32
+      },
+      {
+        "layer": "sage",
+        "graph": "borders+waemu",
+        "hidden": 16
+      },
+      {
+        "layer": "sage",
+        "graph": "borders+waemu",
+        "hidden": 32
+      },
+      {
+        "layer": "gat",
+        "graph": "borders",
+        "hidden": 16
+      },
+      {
+        "layer": "gat",
+        "graph": "borders",
+        "hidden": 32
+      },
+      {
+        "layer": "gat",
+        "graph": "borders+waemu",
+        "hidden": 16
+      },
+      {
+        "layer": "gat",
+        "graph": "borders+waemu",
+        "hidden": 32
+      }
+    ],
+    "C_grid": [
+      0.01,
+      0.1,
+      1.0,
+      10.0
+    ],
     "epochs": 300,
-    "hidden": 16,
-    "layers": 2,
+    "seeds": 25,
+    "inner_seeds": 3,
+    "inner_folds": 4,
     "dropout": 0.2,
     "lr": 0.01,
     "weight_decay": 0.005
   },
   "loyo": {
-    "baseline_c": {
-      "auc": 0.78,
-      "top3_hits": 6
+    "baseline_c_v2": {
+      "auc": 0.778,
+      "top3_hits": 7
     },
     "gnn": {
-      "auc": 0.743,
-      "top3_hits": 5
+      "auc": 0.616,
+      "top3_hits": 7
     },
     "gnn_no_edges": {
-      "auc": 0.663,
-      "top3_hits": 4
+      "auc": 0.734,
+      "top3_hits": 8
     }
   },
   "bootstrap": {
-    "reps": 1999,
+    "reps": 2000,
     "gnn_auc_95ci": [
-      0.526,
-      0.895
+      0.388,
+      0.766
     ],
-    "baseline_c_auc_95ci": [
-      0.564,
-      0.938
+    "baseline_c_v2_auc_95ci": [
+      0.589,
+      0.923
     ],
     "difference_95ci": [
-      -0.227,
-      0.117
+      -0.349,
+      0.001
     ],
-    "share_gnn_better": 0.309
+    "share_gnn_better": 0.026
+  },
+  "decision": {
+    "rule": "GNN v2 is the main model if its held-out AUC is higher than Baseline C v2's",
+    "main_model": "Baseline C v2"
+  },
+  "chosen_settings": [
+    {
+      "gnn_layer": "gat",
+      "gnn_graph": "borders",
+      "gnn_hidden": 16,
+      "held_out_years": 4
+    },
+    {
+      "gnn_layer": "gat",
+      "gnn_graph": "borders+waemu",
+      "gnn_hidden": 16,
+      "held_out_years": 10
+    },
+    {
+      "gnn_layer": "gat",
+      "gnn_graph": "borders+waemu",
+      "gnn_hidden": 32,
+      "held_out_years": 6
+    },
+    {
+      "gnn_layer": "sage",
+      "gnn_graph": "borders",
+      "gnn_hidden": 16,
+      "held_out_years": 1
+    },
+    {
+      "gnn_layer": "sage",
+      "gnn_graph": "borders",
+      "gnn_hidden": 32,
+      "held_out_years": 2
+    },
+    {
+      "gnn_layer": "sage",
+      "gnn_graph": "borders+waemu",
+      "gnn_hidden": 16,
+      "held_out_years": 1
+    }
+  ],
+  "chosen_C": {
+    "0.01": 24
   },
   "action_ranks": [
     {
+      "iso3": "TGO",
+      "year": 2005,
+      "rank_baseline_c_v2": 14,
+      "rank_gnn": 15,
+      "rank_gnn_no_edges": 14,
+      "p_baseline_c_v2": 0.151,
+      "p_gnn": 0.0
+    },
+    {
+      "iso3": "GIN",
+      "year": 2009,
+      "rank_baseline_c_v2": 3,
+      "rank_gnn": 1,
+      "rank_gnn_no_edges": 4,
+      "p_baseline_c_v2": 0.555,
+      "p_gnn": 0.024
+    },
+    {
+      "iso3": "NER",
+      "year": 2009,
+      "rank_baseline_c_v2": 8,
+      "rank_gnn": 3,
+      "rank_gnn_no_edges": 2,
+      "p_baseline_c_v2": 0.308,
+      "p_gnn": 0.004
+    },
+    {
       "iso3": "CIV",
       "year": 2010,
-      "rank_baseline_c": 2,
-      "rank_gnn": 3,
-      "p_baseline_c": 0.39,
-      "p_gnn": 0.136
+      "rank_baseline_c_v2": 4,
+      "rank_gnn": 9,
+      "rank_gnn_no_edges": 7,
+      "p_baseline_c_v2": 0.472,
+      "p_gnn": 0.004
     },
     {
       "iso3": "GNB",
       "year": 2012,
-      "rank_baseline_c": 8,
-      "rank_gnn": 6,
-      "p_baseline_c": 0.167,
-      "p_gnn": 0.0
+      "rank_baseline_c_v2": 7,
+      "rank_gnn": 1,
+      "rank_gnn_no_edges": 7,
+      "p_baseline_c_v2": 0.334,
+      "p_gnn": 0.071
     },
     {
       "iso3": "MLI",
       "year": 2012,
-      "rank_baseline_c": 3,
+      "rank_baseline_c_v2": 3,
       "rank_gnn": 2,
-      "p_baseline_c": 0.32,
-      "p_gnn": 0.138
+      "rank_gnn_no_edges": 3,
+      "p_baseline_c_v2": 0.46,
+      "p_gnn": 0.032
     },
     {
       "iso3": "MLI",
       "year": 2020,
-      "rank_baseline_c": 3,
-      "rank_gnn": 1,
-      "p_baseline_c": 0.423,
-      "p_gnn": 0.744
+      "rank_baseline_c_v2": 1,
+      "rank_gnn": 6,
+      "rank_gnn_no_edges": 2,
+      "p_baseline_c_v2": 0.727,
+      "p_gnn": 0.005
     },
     {
       "iso3": "GIN",
       "year": 2021,
-      "rank_baseline_c": 1,
-      "rank_gnn": 3,
-      "p_baseline_c": 0.826,
-      "p_gnn": 0.238
+      "rank_baseline_c_v2": 5,
+      "rank_gnn": 15,
+      "rank_gnn_no_edges": 15,
+      "p_baseline_c_v2": 0.411,
+      "p_gnn": 0.0
     },
     {
       "iso3": "MLI",
       "year": 2021,
-      "rank_baseline_c": 6,
-      "rank_gnn": 1,
-      "p_baseline_c": 0.675,
-      "p_gnn": 0.7
+      "rank_baseline_c_v2": 1,
+      "rank_gnn": 3,
+      "rank_gnn_no_edges": 2,
+      "p_baseline_c_v2": 0.838,
+      "p_gnn": 0.266
     },
     {
       "iso3": "BFA",
       "year": 2022,
-      "rank_baseline_c": 7,
-      "rank_gnn": 9,
-      "p_baseline_c": 0.696,
-      "p_gnn": 0.028
+      "rank_baseline_c_v2": 2,
+      "rank_gnn": 10,
+      "rank_gnn_no_edges": 1,
+      "p_baseline_c_v2": 0.845,
+      "p_gnn": 0.017
     },
     {
       "iso3": "GIN",
       "year": 2022,
-      "rank_baseline_c": 2,
-      "rank_gnn": 4,
-      "p_baseline_c": 0.964,
-      "p_gnn": 0.629
+      "rank_baseline_c_v2": 3,
+      "rank_gnn": 1,
+      "rank_gnn_no_edges": 3,
+      "p_baseline_c_v2": 0.838,
+      "p_gnn": 0.731
     },
     {
       "iso3": "MLI",
       "year": 2022,
-      "rank_baseline_c": 1,
-      "rank_gnn": 6,
-      "p_baseline_c": 0.973,
-      "p_gnn": 0.267
+      "rank_baseline_c_v2": 1,
+      "rank_gnn": 2,
+      "rank_gnn_no_edges": 2,
+      "p_baseline_c_v2": 0.899,
+      "p_gnn": 0.305
     },
     {
       "iso3": "NER",
       "year": 2023,
-      "rank_baseline_c": 9,
-      "rank_gnn": 13,
-      "p_baseline_c": 0.479,
+      "rank_baseline_c_v2": 4,
+      "rank_gnn": 8,
+      "rank_gnn_no_edges": 2,
+      "p_baseline_c_v2": 0.545,
       "p_gnn": 0.0
     }
   ],
   "oos_2025": {
-    "gnb_rank": 6,
-    "ben_rank": 10,
-    "top5": [
-      {
-        "iso3": "MLI",
-        "gnn_2025": 0.301
-      },
-      {
-        "iso3": "GIN",
-        "gnn_2025": 0.3
-      },
-      {
-        "iso3": "SLE",
-        "gnn_2025": 0.008
-      },
-      {
-        "iso3": "SEN",
-        "gnn_2025": 0.005
-      },
-      {
-        "iso3": "LBR",
-        "gnn_2025": 0.004
-      }
-    ]
+    "gnn": {
+      "gnb_rank": 3,
+      "ben_rank": 11
+    },
+    "baseline_c_v2": {
+      "gnb_rank": 12,
+      "ben_rank": 6
+    }
   },
-  "current_members_2026": [
+  "forecast_fit": {
+    "C": 0.01,
+    "gnn_setting": {
+      "layer": "gat",
+      "graph": "borders",
+      "hidden": 32
+    }
+  },
+  "watch_list_2026": [
     {
       "iso3": "GNB",
-      "score_2026": 70,
-      "member_rank_2026": 1.0
+      "risk_score_0_100": "85",
+      "member_rank": "1.0",
+      "tier": "Elevated"
+    },
+    {
+      "iso3": "NER",
+      "risk_score_0_100": "83",
+      "member_rank": NaN,
+      "tier": "Left ECOWAS"
+    },
+    {
+      "iso3": "MLI",
+      "risk_score_0_100": "83",
+      "member_rank": NaN,
+      "tier": "Left ECOWAS"
+    },
+    {
+      "iso3": "BFA",
+      "risk_score_0_100": "81",
+      "member_rank": NaN,
+      "tier": "Left ECOWAS"
     },
     {
       "iso3": "GIN",
-      "score_2026": 64,
-      "member_rank_2026": 2.0
-    },
-    {
-      "iso3": "LBR",
-      "score_2026": 1,
-      "member_rank_2026": 3.0
-    },
-    {
-      "iso3": "TGO",
-      "score_2026": 0,
-      "member_rank_2026": 4.0
+      "risk_score_0_100": "74",
+      "member_rank": "2.0",
+      "tier": "Elevated"
     },
     {
       "iso3": "BEN",
-      "score_2026": 0,
-      "member_rank_2026": 5.0
-    },
-    {
-      "iso3": "SLE",
-      "score_2026": 0,
-      "member_rank_2026": 6.0
-    },
-    {
-      "iso3": "GHA",
-      "score_2026": 0,
-      "member_rank_2026": 7.0
-    },
-    {
-      "iso3": "SEN",
-      "score_2026": 0,
-      "member_rank_2026": 8.0
+      "risk_score_0_100": "53",
+      "member_rank": "3.0",
+      "tier": "Lower"
     },
     {
       "iso3": "CIV",
-      "score_2026": 0,
-      "member_rank_2026": 9.0
+      "risk_score_0_100": "49",
+      "member_rank": "4.0",
+      "tier": "Lower"
     },
     {
       "iso3": "NGA",
-      "score_2026": 0,
-      "member_rank_2026": 10.0
+      "risk_score_0_100": "47",
+      "member_rank": "5.0",
+      "tier": "Lower"
     },
     {
-      "iso3": "CPV",
-      "score_2026": 0,
-      "member_rank_2026": 11.0
+      "iso3": "LBR",
+      "risk_score_0_100": "45",
+      "member_rank": "6.0",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "TGO",
+      "risk_score_0_100": "41",
+      "member_rank": "7.0",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "SLE",
+      "risk_score_0_100": "36",
+      "member_rank": "8.0",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "SEN",
+      "risk_score_0_100": "36",
+      "member_rank": "9.0",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "GHA",
+      "risk_score_0_100": "36",
+      "member_rank": "10.0",
+      "tier": "Lower"
     },
     {
       "iso3": "GMB",
-      "score_2026": 0,
-      "member_rank_2026": 12.0
+      "risk_score_0_100": "16",
+      "member_rank": "11.0",
+      "tier": "Lower"
+    },
+    {
+      "iso3": "CPV",
+      "risk_score_0_100": "15",
+      "member_rank": "12.0",
+      "tier": "Lower"
     }
   ]
 }
