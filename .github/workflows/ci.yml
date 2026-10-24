@@ -92,7 +92,12 @@ jobs:
           mkdir -p airflow-data && chmod 777 airflow-data
           docker compose up -d postgres
           docker compose run --rm airflow bash -c \
-            "airflow db migrate && airflow dags test ecowas_monthly -c '{\"live\": true, \"update_gdelt\": true}'"
+            "airflow db migrate && airflow dags test ecowas_monthly -c '{\"live\": true, \"update_gdelt\": true}'" \
+            2>&1 | tee dag-run.log
+          # Report the result as annotations (readable through the API) and fail if the run failed
+          grep -E "ERROR|Error|Traceback" dag-run.log | head -15 | sed 's/^/::warning::/' || true
+          grep -o "DagRun Finished: dag_id=ecowas_monthly.*state=[a-z_]*" dag-run.log | sed 's/^/::notice::/' || true
+          grep -q "DagRun Finished: dag_id=ecowas_monthly.*state=success" dag-run.log
       - name: Check the outputs
         run: |
           ls -R airflow-data/runs
