@@ -1,0 +1,66 @@
+# Rebuilds the saved data snapshots from their live sources and commits them.
+#   World Bank: data/raw/world_bank.csv (API)
+#   GDELT:      data/raw/gdelt_country_month.csv (GDELT 1.0 event files, tens of GB)
+# Start it from the Actions tab (workflow_dispatch), or push a commit whose
+# message contains [refresh-data].
+name: Refresh data
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  world-bank:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-data]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-pipeline.txt
+      - run: python scripts/refresh_world_bank.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world-bank
+          path: data/raw/world_bank.csv
+
+  gdelt:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-data]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-pipeline.txt
+      - run: python scripts/refresh_gdelt.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdelt
+          path: |
+            data/raw/gdelt_country_month.csv
+            data/raw/gdelt_country_month.json
+
+  # Put both snapshots on the branch that started the run
+  commit:
+    needs: [world-bank, gdelt]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: incoming
+      - name: Commit the new snapshots
+        run: |
+          cp incoming/world-bank/world_bank.csv data/raw/world_bank.csv
+          cp incoming/gdelt/gdelt_country_month.csv incoming/gdelt/gdelt_country_month.json data/raw/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/raw/world_bank.csv data/raw/gdelt_country_month.csv data/raw/gdelt_country_month.json
+          git commit -m "Refresh World Bank and GDELT snapshots (run ${{ github.run_id }})" || echo "No changes"
+          git push origin HEAD:${{ github.ref_name }}

@@ -26,24 +26,28 @@ years:
 # -----------------------------------------------------------------------------
 # The 15 ECOWAS members
 # vdem_name is how V-Dem spells the country.
+# fips is the country code GDELT uses (FIPS 10-4); it differs from ISO, for
+#   example Niger is NG and Nigeria is NI.
 # landlocked: 1 for Mali, Burkina Faso, and Niger.
+# waemu: 1 for members of the West African Economic and Monetary Union (the
+#   CFA franc zone). These eight share a currency and a central bank.
 # -----------------------------------------------------------------------------
 countries:
-  - {iso3: BEN, name: Benin,          vdem_name: Benin,         landlocked: 0}
-  - {iso3: BFA, name: Burkina Faso,   vdem_name: Burkina Faso,  landlocked: 1}
-  - {iso3: CPV, name: Cabo Verde,     vdem_name: Cape Verde,    landlocked: 0}
-  - {iso3: CIV, name: Cote d'Ivoire,  vdem_name: Ivory Coast,   landlocked: 0}
-  - {iso3: GMB, name: Gambia,         vdem_name: The Gambia,    landlocked: 0}
-  - {iso3: GHA, name: Ghana,          vdem_name: Ghana,         landlocked: 0}
-  - {iso3: GIN, name: Guinea,         vdem_name: Guinea,        landlocked: 0}
-  - {iso3: GNB, name: Guinea-Bissau,  vdem_name: Guinea-Bissau, landlocked: 0}
-  - {iso3: LBR, name: Liberia,        vdem_name: Liberia,       landlocked: 0}
-  - {iso3: MLI, name: Mali,           vdem_name: Mali,          landlocked: 1}
-  - {iso3: NER, name: Niger,          vdem_name: Niger,         landlocked: 1}
-  - {iso3: NGA, name: Nigeria,        vdem_name: Nigeria,       landlocked: 0}
-  - {iso3: SEN, name: Senegal,        vdem_name: Senegal,       landlocked: 0}
-  - {iso3: SLE, name: Sierra Leone,   vdem_name: Sierra Leone,  landlocked: 0}
-  - {iso3: TGO, name: Togo,           vdem_name: Togo,          landlocked: 0}
+  - {iso3: BEN, name: Benin,          vdem_name: Benin,         landlocked: 0, fips: BN, waemu: 1}
+  - {iso3: BFA, name: Burkina Faso,   vdem_name: Burkina Faso,  landlocked: 1, fips: UV, waemu: 1}
+  - {iso3: CPV, name: Cabo Verde,     vdem_name: Cape Verde,    landlocked: 0, fips: CV, waemu: 0}
+  - {iso3: CIV, name: Cote d'Ivoire,  vdem_name: Ivory Coast,   landlocked: 0, fips: IV, waemu: 1}
+  - {iso3: GMB, name: Gambia,         vdem_name: The Gambia,    landlocked: 0, fips: GA, waemu: 0}
+  - {iso3: GHA, name: Ghana,          vdem_name: Ghana,         landlocked: 0, fips: GH, waemu: 0}
+  - {iso3: GIN, name: Guinea,         vdem_name: Guinea,        landlocked: 0, fips: GV, waemu: 0}
+  - {iso3: GNB, name: Guinea-Bissau,  vdem_name: Guinea-Bissau, landlocked: 0, fips: PU, waemu: 1}
+  - {iso3: LBR, name: Liberia,        vdem_name: Liberia,       landlocked: 0, fips: LI, waemu: 0}
+  - {iso3: MLI, name: Mali,           vdem_name: Mali,          landlocked: 1, fips: ML, waemu: 1}
+  - {iso3: NER, name: Niger,          vdem_name: Niger,         landlocked: 1, fips: NG, waemu: 1}
+  - {iso3: NGA, name: Nigeria,        vdem_name: Nigeria,       landlocked: 0, fips: NI, waemu: 0}
+  - {iso3: SEN, name: Senegal,        vdem_name: Senegal,       landlocked: 0, fips: SG, waemu: 1}
+  - {iso3: SLE, name: Sierra Leone,   vdem_name: Sierra Leone,  landlocked: 0, fips: SL, waemu: 0}
+  - {iso3: TGO, name: Togo,           vdem_name: Togo,          landlocked: 0, fips: TO, waemu: 1}
 
 # Members that left ECOWAS on January 29, 2025
 exited_2025: [MLI, BFA, NER]
@@ -76,7 +80,7 @@ sources:
   world_bank:
     # Live mode calls this API. Local mode reads the saved snapshot instead.
     api_url: https://api.worldbank.org/v2
-    first_year: 2009
+    first_year: 2000
     last_year: 2025
     snapshot: data/raw/world_bank.csv
     indicators:
@@ -91,6 +95,17 @@ sources:
   ecowas_events:
     # Hand-coded from ECOWAS communiques and news coverage
     file: data/raw/ecowas_events.csv
+  gdelt:
+    # GDELT 1.0 event files, counted by country (ActionGeo_CountryCode) and month.
+    # scripts/refresh_gdelt.py rebuilds the snapshot (run in GitHub Actions,
+    # .github/workflows/refresh-data.yml).
+    index_url: http://data.gdeltproject.org/events/index.html
+    first_year: 2000
+    last_year: 2025
+    snapshot: data/raw/gdelt_country_month.csv
+    protest_roots: ["14"]               # CAMEO root code 14: protest
+    violence_roots: ["18", "19", "20"]  # assault, fight, mass violence
+    min_events: 50                      # fewer events in a year: shares are missing
 
 # -----------------------------------------------------------------------------
 # File paths
