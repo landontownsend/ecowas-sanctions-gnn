@@ -90,6 +90,22 @@ own_coups AS (
     GROUP BY s.iso3, s.year
 ),
 
+-- Years since the member's last successful coup, counted up to 20.
+-- Example: Guinea in 2009 had a coup in 2008, so the value is 1.
+-- Senegal has had no coup, so the value is the cap, 20.
+last_coup AS (
+    SELECT
+        s.iso3,
+        s.year,
+        COALESCE(s.year - MAX(v.year), 20) AS years_since_coup
+    FROM skeleton AS s
+    LEFT JOIN staging.vdem AS v
+      ON v.iso3 = s.iso3
+     AND v.coups_successful > 0
+     AND v.year BETWEEN s.year - 20 AND s.year - 1
+    GROUP BY s.iso3, s.year
+),
+
 -- Import damage measure: percent change in real imports from the year before
 -- to the average of this year and the next year.
 imports AS (
@@ -129,13 +145,16 @@ joined AS (
         w.gdp_growth,
         w.inflation,
         w.imports_pct_gdp,
-        i.import_change_2yr
+        i.import_change_2yr,
+        g.gdelt_protest_share,
+        g.gdelt_violence_share
     FROM skeleton AS s
     LEFT JOIN staging.actions    AS a ON a.iso3 = s.iso3 AND a.year = s.year
     LEFT JOIN staging.vdem       AS v ON v.iso3 = s.iso3 AND v.year = s.year
     LEFT JOIN region_coups       AS r ON r.iso3 = s.iso3 AND r.year = s.year
     LEFT JOIN staging.world_bank AS w ON w.iso3 = s.iso3 AND w.year = s.year
     LEFT JOIN import_change      AS i ON i.iso3 = s.iso3 AND i.year = s.year
+    LEFT JOIN staging.gdelt      AS g ON g.iso3 = s.iso3 AND g.year = s.year
 ),
 
 -- Prior-year values: what the model is allowed to know before the year starts
@@ -148,7 +167,10 @@ lagged AS (
         LAG(military_rule_index) OVER w AS military_rule_index_lag1,
         LAG(gdp_growth)          OVER w AS gdp_growth_lag1,
         LAG(inflation)           OVER w AS inflation_lag1,
-        LAG(imports_pct_gdp)     OVER w AS imports_pct_gdp_lag1
+        LAG(imports_pct_gdp)     OVER w AS imports_pct_gdp_lag1,
+        LAG(ecowas_action)        OVER w AS ecowas_action_lag1,
+        LAG(gdelt_protest_share)  OVER w AS gdelt_protest_share_lag1,
+        LAG(gdelt_violence_share) OVER w AS gdelt_violence_share_lag1
     FROM joined
     WINDOW w AS (PARTITION BY iso3 ORDER BY year)
 )
@@ -158,11 +180,13 @@ SELECT
     l.*,
     bm.border_military_max_lag1,
     bc.border_coups_prev3,
-    oc.coups_successful_prev3
+    oc.coups_successful_prev3,
+    lc.years_since_coup
 FROM lagged AS l
 LEFT JOIN border_military AS bm ON bm.iso3 = l.iso3 AND bm.year = l.year
 LEFT JOIN border_coups    AS bc ON bc.iso3 = l.iso3 AND bc.year = l.year
 LEFT JOIN own_coups       AS oc ON oc.iso3 = l.iso3 AND oc.year = l.year
+LEFT JOIN last_coup       AS lc ON lc.iso3 = l.iso3 AND lc.year = l.year
 WHERE l.year >= {start_year}
 ORDER BY l.iso3, l.year;
 
@@ -176,8 +200,10 @@ ORDER BY iso3, year;
 
 
 -- The years after the study period: model inputs only, no outcome.
--- V-Dem leaves a coup count blank when it has not yet coded the year (for
--- example 2025 in the v16 release). Here a blank count is treated as 0 coups.
+-- V-Dem leaves a coup count blank when it found no coup in a year it has not
+-- fully coded (for example 2025 in the v16 release). Here a blank count is
+-- treated as 0 coups. Economic and GDELT values can be missing; the model
+-- scripts fill them in the same way as in training.
 CREATE OR REPLACE TABLE features.forecast_inputs AS
 SELECT
     iso3,
@@ -187,7 +213,15 @@ SELECT
     neighbor_coups_prev3,
     border_military_max_lag1,
     border_coups_prev3,
-    coups_successful_prev3
+    coups_successful_prev3,
+    COALESCE(coups_failed_lag1, 0.0)     AS coups_failed_lag1,
+    mass_mobilization_lag1,
+    gdp_growth_lag1,
+    inflation_lag1,
+    ecowas_action_lag1,
+    years_since_coup,
+    gdelt_protest_share_lag1,
+    gdelt_violence_share_lag1
 FROM features.country_year_all
 WHERE year > {end_year}
 ORDER BY iso3, year;

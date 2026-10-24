@@ -28,6 +28,13 @@ def test_missing_forecast_row_is_caught(con, cfg):
         run_checks(con, cfg, verbose=False)
 
 
+def test_gdelt_share_above_one_is_caught(con, cfg):
+    con.execute("UPDATE staging.gdelt SET gdelt_protest_share = 1.2 "
+                "WHERE iso3 = 'NGA' AND year = 2012")
+    with pytest.raises(DataQualityError, match="GDELT shares"):
+        run_checks(con, cfg, verbose=False)
+
+
 def test_one_way_border_is_caught(con, cfg):
     con.execute("DELETE FROM raw.borders WHERE iso3 = 'GMB' AND neighbor = 'SEN'")
     with pytest.raises(DataQualityError, match="two-way"):

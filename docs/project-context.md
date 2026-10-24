@@ -146,9 +146,22 @@ Run: `python -m pipeline.run [--live]`, `python src/analysis.py`,
 - `gh pr create` fails (GraphQL is blocked); open pull requests with the REST
   API: `gh api repos/landontownsend/ecowas-sanctions-gnn/pulls --input pr.json`.
   Merge with `gh api -X PUT .../pulls/N/merge`.
-- The cloud workspace cannot reach `api.worldbank.org` or
-  `data.gdeltproject.org`. GitHub Actions can, so live-data steps are verified
-  in CI. The owner can allow domains in the workspace's network settings.
+- The cloud workspace cannot reach `api.worldbank.org`, `data.gdeltproject.org`,
+  `v-dem.net`, or `download.pytorch.org`. GitHub Actions can, so live-data steps
+  run there: `refresh-data.yml` (World Bank and GDELT snapshots) and
+  `run-models.yml` (the full run, about 20 to 40 minutes). Both start from the
+  Actions tab, or when a pushed commit message contains `[refresh-data]` or
+  `[run-models]`, and both commit their outputs to the branch. The owner can
+  allow domains in the workspace's network settings.
+- GitHub Actions job logs are stored on a host the workspace cannot reach.
+  Annotations can be read through the API
+  (`gh api repos/OWNER/REPO/check-runs/JOB_ID/annotations`), so the scripts
+  report progress and errors with `::notice::` and `::error::` lines.
+- The full V-Dem dataset is in the public `vdeminstitute/vdemdata` repository
+  (`data/vdem.RData`), which the workspace can clone;
+  `scripts/make_vdem_subset.py` builds the subset from it.
+- PyTorch installs in the workspace from PyPI (the GPU build, about 4 GB with its
+  libraries; it runs on CPU), so `python src/gnn.py --quick` can be tested here.
 - The owner's local copy is a clone on his Mac; he runs `git pull` to update it.
 
 ## 6. Roadmap

@@ -1,0 +1,47 @@
+# Runs the whole project (pipeline, baselines, GNN v2, figures) and commits the
+# outputs to the branch. The GNN v2 run takes about 20 to 40 minutes.
+# Start it from the Actions tab (workflow_dispatch), or push a commit whose
+# message contains [run-models].
+name: Run models
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  models:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-models]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (CPU-only PyTorch first)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Install the Inter font used by the figures
+        run: sudo apt-get update && sudo apt-get install -y fonts-inter || echo "Inter not available; default font"
+      - name: Run everything
+        run: ./run_all.sh
+      - name: Report the main numbers
+        run: |
+          python - <<'EOF'
+          import json
+          g = json.load(open("results/gnn_summary.json"))
+          print(f"::notice::loyo={json.dumps(g['loyo'])}")
+          print(f"::notice::bootstrap={json.dumps(g['bootstrap'])}")
+          print(f"::notice::decision={json.dumps(g['decision'])}")
+          EOF
+      - name: Commit the outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/processed results figures
+          git commit -m "Model run outputs (run ${{ github.run_id }})" || echo "No changes"
+          git push origin HEAD:${{ github.ref_name }}
