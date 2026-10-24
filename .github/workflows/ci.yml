@@ -62,6 +62,50 @@ jobs:
       - run: python -m pipeline.run
       - run: python src/gnn.py --quick
 
+  # The Airflow DAGs load and have their tasks in order
+  dag-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Airflow 3 with its constraints
+        run: |
+          pip install "apache-airflow==3.3.2" --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt
+          pip install -r requirements-pipeline.txt
+      - run: pytest -v tests/test_dags.py
+        env:
+          AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+  # The whole monthly DAG runs inside the Airflow image from docker-compose,
+  # with live World Bank data and a real GDELT update
+  airflow-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Airflow image
+        run: docker compose build airflow
+      - name: Run the monthly DAG once
+        run: |
+          mkdir -p airflow-data && chmod 777 airflow-data
+          docker compose up -d postgres
+          docker compose run --rm airflow bash -c \
+            "airflow db migrate && airflow dags test ecowas_monthly -c '{\"live\": true, \"update_gdelt\": true}'" \
+            2>&1 | tee dag-run.log
+          # Report the result as annotations (readable through the API) and fail if the run failed
+          grep -E "ERROR|Error|Traceback" dag-run.log | head -15 | sed 's/^/::warning::/' || true
+          echo "::notice title=last lines of the DAG run::$(tail -80 dag-run.log | cut -c1-220 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+          grep -o "DagRun Finished: dag_id=ecowas_monthly.*state=[a-z_]*" dag-run.log | sed 's/^/::notice::/' || true
+          grep -q "DagRun Finished: dag_id=ecowas_monthly.*state=success" dag-run.log
+      - name: Check the outputs
+        run: |
+          ls -R airflow-data/runs
+          cat airflow-data/runs/*/changes.md
+          python3 -c "import json; m = json.load(open('airflow-data/gdelt_country_month.json')); print('::notice::GDELT updates:', m.get('updates'))"
+          test -f airflow-data/ecowas.duckdb
+
   # The Docker image builds and runs the pipeline and baselines
   docker:
     runs-on: ubuntu-latest

@@ -1,0 +1,47 @@
+# Runs Airflow 3 locally: one Airflow container (all components, "standalone")
+# and a Postgres database for Airflow's own records.
+#
+#   docker compose up -d --build        (from the repository root)
+#   open http://localhost:8080        (no login: local use only)
+#
+# Everything the DAGs write (warehouse, GDELT snapshot, dated watch lists) goes
+# in airflow-data/ at the repository root, which git ignores.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+
+  airflow:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    command: standalone
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/ecowas/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"   # no login; local use only
+      AIRFLOW__API_AUTH__JWT_SECRET: local-only-secret        # shared by the Airflow processes
+      ECOWAS_DATA_DIR: /opt/airflow-data
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow-data:/opt/airflow-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-db:

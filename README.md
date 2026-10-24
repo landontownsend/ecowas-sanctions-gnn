@@ -83,12 +83,39 @@ The version 1 code and outputs are in the git history at commit `d437885`.
 * **Configuration** (`config.yaml`): years, members, the border network, GDELT codes, data sources, paths, feature lists, tuning grids, watch list tiers, and every model setting are in one file.
 * **Tests and CI**: pytest covers API parsing, the SQL features, the checks, and the watch list rules. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, runs a one-minute GNN smoke test, and builds the Docker image. A second workflow (`run-models.yml`) runs the full project and commits the outputs.
 
+## Orchestration (Apache Airflow 3)
+
+Two DAGs in `dags/` call plain Python functions in `pipeline/tasks.py`:
+
+```
+ecowas_monthly   (06:00 UTC on the 2nd of each month)
+  update_gdelt -> ingest -> transform -> checks -> export -> baselines -> watch_list -> publish
+
+ecowas_models    (started by hand)
+  gnn_full -> figures -> publish_models
+```
+
+* **update_gdelt** adds only the complete months that are missing from the GDELT snapshot (about 30 daily files a month), not the full 4,727-file history.
+* **ingest** calls the World Bank API (live by default; a manual run can turn it off).
+* **checks** stops the run if any data check fails, so a bad month never reaches the watch list. Download tasks retry twice; the checks do not.
+* **watch_list** refits the main model (Baseline C v2, seconds) and rewrites the watch list. The full GNN run is the separate `ecowas_models` DAG.
+* **publish** saves `runs/YYYY-MM-DD/` with the watch lists, the summary, and `changes.md`, a note on what moved since the last run.
+
+Run it locally with Docker Compose (Airflow and a Postgres database for Airflow's own records):
+
+```bash
+docker compose up -d --build      # then open http://localhost:8080
+```
+
+Outputs go to `airflow-data/` (git ignores it). CI loads the DAGs and checks their task order, and runs the whole monthly DAG inside the Docker image with live World Bank data and a real GDELT update.
+
 ## Repository structure
 
 ```
 ecowas-sanctions-gnn/
 ├── config.yaml               # every setting: years, members, borders, sources, features, models
-├── pipeline/                 # data pipeline: ingest, transform, checks, run
+├── pipeline/                 # data pipeline: ingest, transform, checks, run, Airflow tasks
+├── dags/                     # Airflow DAGs: ecowas_monthly, ecowas_models
 ├── sql/                      # DuckDB SQL models: staging and features
 ├── src/
 │   ├── analysis.py           # descriptives, economic impact, Baselines A to C, 2025 check
@@ -105,7 +132,9 @@ ecowas-sanctions-gnn/
 ├── results/                  # CSV and JSON outputs
 ├── figures/                  # PNG figures
 ├── docs/project-context.md   # design, decisions, and development log
-├── Dockerfile
+├── Dockerfile                # the project image (pipeline and models)
+├── docker/                   # the Airflow image
+├── docker-compose.yaml       # Airflow and Postgres, run locally
 └── run_all.sh                # runs everything in order
 ```
 
@@ -147,7 +176,7 @@ pytest                        # tests
 
 * [x] **Foundation:** World Bank API ingestion, DuckDB warehouse with raw, staging, and feature layers, data quality checks, one configuration file, tests, CI, and Docker
 * [x] **Version 2:** 2001 start, GDELT events, 11 inputs, graph attention network, nested cross-validation, pre-registered design
-* [ ] **Orchestration:** schedule monthly refreshes with Apache Airflow
+* [x] **Orchestration:** monthly refreshes with Apache Airflow 3, incremental GDELT updates, Docker Compose
 * [ ] **Monthly panel:** country-month features from the GDELT snapshot and a six-month forecasting horizon
 * [ ] **Dashboard:** a Streamlit app with the risk map, the current watch list, and the import damage chart
 
