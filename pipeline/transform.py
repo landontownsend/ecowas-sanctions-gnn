@@ -6,7 +6,7 @@ Runs the SQL models in sql/ inside DuckDB: raw -> staging -> features.
 from pathlib import Path
 
 SQL_DIR = Path("sql")
-MODELS = ["staging.sql", "features.sql"]   # run in this order
+MODELS = ["staging.sql", "features.sql", "monthly.sql"]   # run in this order
 
 
 def transform(con, cfg):
@@ -23,6 +23,11 @@ def transform(con, cfg):
 def features_table(con):
     """Return the study-period feature table as a pandas DataFrame, sorted by country and year."""
     return con.execute("SELECT * FROM features.country_year ORDER BY iso3, year").df()
+
+
+def month_table(con):
+    """Return the country-month panel as a pandas DataFrame, sorted by country, year, and month."""
+    return con.execute("SELECT * FROM features.country_month ORDER BY iso3, year, month").df()
 
 
 def forecast_table(con):
