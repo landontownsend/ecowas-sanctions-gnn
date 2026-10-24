@@ -15,9 +15,8 @@ months ahead? Does modeling the region as a network of bordering states improve
 that forecast? How much economic damage do those actions cause?
 
 **Origin.** The project began as a trial run for a graduate research course at
-the University of Maryland (M.S. Applied Political Analytics). It now continues
-as a personal portfolio project aimed at Data Engineer roles, and it may become
-a second-year master's project later.
+the University of Maryland. It now continues as a personal portfolio project
+and it may become a second-year master's project later.
 
 **Data.** A country-year panel: 15 ECOWAS members, 2010 to 2024, 225 rows.
 - V-Dem v16: successful coups (`e_pt_coup`, Powell and Thyne), coup attempts,
