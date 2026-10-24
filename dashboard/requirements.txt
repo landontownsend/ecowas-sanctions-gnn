@@ -1,0 +1,7 @@
+# Packages for the dashboard only (Streamlit Community Cloud reads this file,
+# because it sits next to dashboard/app.py). The models are not run here.
+streamlit>=1.50,<2
+plotly>=6.0
+pandas>=2.0
+pyyaml>=6.0
+duckdb>=1.1

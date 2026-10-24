@@ -1,0 +1,8 @@
+# Dashboard colors, shared with the figures
+[theme]
+base = "light"
+primaryColor = "#B5472A"
+backgroundColor = "#F6F4EF"
+secondaryBackgroundColor = "#ECE6DA"
+textColor = "#17233A"
+font = "sans serif"
