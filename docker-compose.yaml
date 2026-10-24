@@ -1,8 +1,9 @@
-# Runs Airflow 3 locally: one Airflow container (all components, "standalone")
-# and a Postgres database for Airflow's own records.
+# Runs Airflow 3 locally: one Airflow container (all components, "standalone"),
+# a Postgres database for Airflow's own records, and the Streamlit dashboard.
 #
 #   docker compose up -d --build        (from the repository root)
-#   open http://localhost:8080        (no login: local use only)
+#   open http://localhost:8080          Airflow (no login: local use only)
+#   open http://localhost:8501          the dashboard, showing the newest monthly run
 #
 # Everything the DAGs write (warehouse, GDELT snapshot, dated watch lists) goes
 # in airflow-data/ at the repository root, which git ignores.
@@ -42,6 +43,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    environment:
+      ECOWAS_DATA_DIR: /opt/airflow-data
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./airflow-data:/opt/airflow-data:ro    # read only: the DAGs write, the dashboard reads
 
 volumes:
   postgres-db:
