@@ -82,7 +82,14 @@ The version 1 code and outputs are in the git history at commit `d437885`.
 * **Monthly panel** (`sql/monthly.sql`): one row per member per month, 2001 to 2024 (4,320 rows), with GDELT protest and violence shares over the last 1, 3, and 6 months, the previous year's V-Dem and economic values, and the outcome for a six-month horizon (`action_next_6m`: a new ECOWAS action in any of the next 6 months, from the exact event dates). 16 action months; 87 months have an action in the following six. Exported to `data/processed/ecowas_country_month.csv`.
 * **Checks** (`pipeline/checks.py`): 23 data quality checks, for example one row per member per year and per month, a military rule index between 0 and 1, two-way borders, GDELT shares between 0 and 1, and complete forecast inputs. The run stops if any check fails.
 * **Configuration** (`config.yaml`): years, members, the border network, GDELT codes, data sources, paths, feature lists, tuning grids, watch list tiers, and every model setting are in one file.
-* **Tests and CI**: pytest covers API parsing, the SQL features, the checks, and the watch list rules. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, runs a one-minute GNN smoke test, and builds the Docker image. A second workflow (`run-models.yml`) runs the full project and commits the outputs.
+* **Tests and CI**: pytest covers API parsing, the SQL features, the checks, and the watch list rules. GitHub Actions runs the tests, the pipeline, and the baselines on every push, confirms that the outputs match the committed results, tests the live World Bank API, runs a one-minute GNN smoke test, tests the dashboard, and builds the Docker images. A second workflow (`run-models.yml`) runs the full project and commits the outputs.
+
+## Dashboard
+
+A Streamlit app (`dashboard/app.py`) with five tabs: the watch list (an interactive risk map and table), monthly GDELT protest and violence trends for each country with ECOWAS actions and coups marked, the import change after each action, the model comparison, and the data sources.
+
+* **Online:** hosted on Streamlit Community Cloud from this repository (main file `dashboard/app.py`). It reads only committed files, so it needs no database, and the map is drawn from a bundled 91 KB file, so it needs no map service.
+* **Locally:** `pip install -r dashboard/requirements.txt` and `streamlit run dashboard/app.py`, or `docker compose up`, which starts it at http://localhost:8501 next to Airflow. There it shows the newest monthly Airflow run and the warehouse's load log.
 
 ## Orchestration (Apache Airflow 3)
 
@@ -102,10 +109,10 @@ ecowas_models    (started by hand)
 * **watch_list** refits the main model (Baseline C v2, seconds) and rewrites the watch list. The full GNN run is the separate `ecowas_models` DAG.
 * **publish** saves `runs/YYYY-MM-DD/` with the watch lists, the summary, and `changes.md`, a note on what moved since the last run.
 
-Run it locally with Docker Compose (Airflow and a Postgres database for Airflow's own records):
+Run it locally with Docker Compose (Airflow, a Postgres database for Airflow's own records, and the dashboard):
 
 ```bash
-docker compose up -d --build      # then open http://localhost:8080
+docker compose up -d --build      # Airflow at http://localhost:8080, dashboard at http://localhost:8501
 ```
 
 Outputs go to `airflow-data/` (git ignores it). CI loads the DAGs and checks their task order, and runs the whole monthly DAG inside the Docker image with live World Bank data and a real GDELT update.
@@ -117,6 +124,7 @@ ecowas-sanctions-gnn/
 ├── config.yaml               # every setting: years, members, borders, sources, features, models
 ├── pipeline/                 # data pipeline: ingest, transform, checks, run, Airflow tasks
 ├── dags/                     # Airflow DAGs: ecowas_monthly, ecowas_models
+├── dashboard/                # Streamlit app and its requirements
 ├── sql/                      # DuckDB SQL models: staging and features
 ├── src/
 │   ├── analysis.py           # descriptives, economic impact, Baselines A to C, 2025 check
@@ -128,6 +136,7 @@ ecowas-sanctions-gnn/
 ├── scripts/                  # reproducibility check, V-Dem subset, World Bank and GDELT refresh
 ├── data/
 │   ├── raw/                  # V-Dem subset, World Bank and GDELT snapshots, hand-coded ECOWAS events
+│   ├── geo/                  # map shapes for the dashboard (Natural Earth)
 │   └── processed/            # ecowas_country_year.csv (the analysis panel) and
 │                             # ecowas_forecast_inputs.csv (inputs for the check and forecast years)
 │                             # ecowas_country_month.csv (the monthly panel)
@@ -135,8 +144,8 @@ ecowas-sanctions-gnn/
 ├── figures/                  # PNG figures
 ├── docs/project-context.md   # design, decisions, and development log
 ├── Dockerfile                # the project image (pipeline and models)
-├── docker/                   # the Airflow image
-├── docker-compose.yaml       # Airflow and Postgres, run locally
+├── docker/                   # the Airflow and dashboard images
+├── docker-compose.yaml       # Airflow, Postgres, and the dashboard, run locally
 └── run_all.sh                # runs everything in order
 ```
 
@@ -181,7 +190,7 @@ pytest                        # tests
 * [x] **Orchestration:** monthly refreshes with Apache Airflow 3, incremental GDELT updates, Docker Compose
 * [x] **Monthly panel:** country-month features from the GDELT snapshot and a six-month outcome
 * [ ] **Version 3 model:** a six-month forecast on the monthly panel, with its design written first
-* [ ] **Dashboard:** a Streamlit app with the risk map, the current watch list, and the import damage chart
+* [x] **Dashboard:** a Streamlit app with the risk map, the current watch list, monthly trends, the import damage chart, and the model comparison
 
 ## Data sources
 
