@@ -42,7 +42,7 @@ It builds a country-year panel of all 15 ECOWAS members from 2001, when ECOWAS a
 | Graph neural network (GraphSAGE) | 0.74 | 5 of 10 |
 | Graph neural network, border edges removed | 0.66 | 4 of 10 |
 
-The version 1 code and outputs are in the git history (tag `v1`).
+The version 1 code and outputs are in the git history at commit `d437885`.
 
 ![Risk map](figures/fig3_risk_map.png)
 
